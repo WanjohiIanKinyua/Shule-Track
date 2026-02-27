@@ -1,6 +1,6 @@
 # Shule Track
 
-Shule Track is a simple Kenyan high school teacher management system for:
+Shule Track is a Kenyan high school teacher management system for:
 - class setup (`Form 1` to `Form 4`)
 - student records per class
 - daily attendance
@@ -16,43 +16,32 @@ Shule Track is a simple Kenyan high school teacher management system for:
 ## Stack
 - Frontend: React + Vite
 - Backend: Node.js + Express
-- Database (current): SQLite
-- Database (later): PostgreSQL (Neon)
+- Database: PostgreSQL (Neon)
 
 ## 1) Configure environment
 
 Copy `.env.example` to `.env` and set values:
 
 ```bash
-SQLITE_PATH=./server/shule-track.db
+DATABASE_URL=postgresql://USER:PASSWORD@HOST/DB?sslmode=require
 JWT_SECRET=your-strong-secret
 PORT=4000
 VITE_API_URL=http://localhost:4000/api
 ```
 
-## 2) Initialize database schema
-
-The app auto-creates SQLite tables on backend startup using:
-
-- `server/schema.sqlite.sql`
-
-For later PostgreSQL migration, use:
-
-- `server/schema.postgres.sql`
-
-## 3) Install dependencies
+## 2) Install dependencies
 
 ```bash
 npm install
 ```
 
-## 4) Run backend
+## 3) Run backend
 
 ```bash
 npm run server
 ```
 
-## 5) Run frontend
+## 4) Run frontend
 
 In another terminal:
 
@@ -61,3 +50,8 @@ npm run dev
 ```
 
 Frontend runs on `http://localhost:8080` and API on `http://localhost:4000`.
+
+## Notes
+
+- The backend auto-applies `server/schema.postgres.sql` on startup.
+- If port `4000` is busy, stop the process using it or change `PORT` in `.env`.

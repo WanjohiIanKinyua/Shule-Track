@@ -7,6 +7,10 @@ export default function AuthPage() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [showLoginPassword, setShowLoginPassword] = useState(false);
+  const [showRegisterPassword, setShowRegisterPassword] = useState(false);
+  const [showRegisterConfirmPassword, setShowRegisterConfirmPassword] = useState(false);
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
@@ -18,6 +22,9 @@ export default function AuthPage() {
       if (mode === "login") {
         await login(email, password);
       } else {
+        if (password !== confirmPassword) {
+          throw new Error("Passwords do not match");
+        }
         await register(name, email, password);
       }
     } catch (err: any) {
@@ -62,22 +69,81 @@ export default function AuthPage() {
           </label>
           <label>
             Password
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              minLength={6}
-              required
-              placeholder="********"
-            />
+            <div className="password-input-wrap">
+              <input
+                type={mode === "login" ? (showLoginPassword ? "text" : "password") : showRegisterPassword ? "text" : "password"}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                minLength={6}
+                required
+                placeholder="********"
+              />
+              <button
+                type="button"
+                className="password-toggle"
+                aria-label={mode === "login" ? (showLoginPassword ? "Hide password" : "Show password") : showRegisterPassword ? "Hide password" : "Show password"}
+                onClick={() =>
+                  mode === "login" ? setShowLoginPassword((v) => !v) : setShowRegisterPassword((v) => !v)
+                }
+              >
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path
+                    d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6-10-6-10-6z"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="1.8"
+                  />
+                  <circle cx="12" cy="12" r="3.2" fill="none" stroke="currentColor" strokeWidth="1.8" />
+                </svg>
+              </button>
+            </div>
           </label>
+          {mode === "register" && (
+            <label>
+              Confirm Password
+              <div className="password-input-wrap">
+                <input
+                  type={showRegisterConfirmPassword ? "text" : "password"}
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  minLength={6}
+                  required
+                  placeholder="********"
+                />
+                <button
+                  type="button"
+                  className="password-toggle"
+                  aria-label={showRegisterConfirmPassword ? "Hide confirm password" : "Show confirm password"}
+                  onClick={() => setShowRegisterConfirmPassword((v) => !v)}
+                >
+                  <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <path
+                      d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6-10-6-10-6z"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="1.8"
+                    />
+                    <circle cx="12" cy="12" r="3.2" fill="none" stroke="currentColor" strokeWidth="1.8" />
+                  </svg>
+                </button>
+              </div>
+            </label>
+          )}
           {error && <p className="error">{error}</p>}
           <button className="btn auth-submit" type="submit" disabled={submitting}>
             {submitting ? "Please wait..." : mode === "login" ? "Sign In" : "Create Account"}
           </button>
         </form>
 
-        <button className="btn btn-ghost auth-switch" onClick={() => setMode(mode === "login" ? "register" : "login")}>
+        <button
+          className="btn btn-ghost auth-switch"
+          onClick={() => {
+            setMode(mode === "login" ? "register" : "login");
+            setError("");
+            setPassword("");
+            setConfirmPassword("");
+          }}
+        >
           {mode === "login" ? "Don't have an account? Register" : "Already have an account? Log in"}
         </button>
       </div>

@@ -771,6 +771,39 @@ td {
   padding: 12px 12px;
 }
 
+.password-input-wrap {
+  position: relative;
+}
+
+.password-input-wrap input {
+  width: 100%;
+  padding-right: 46px;
+}
+
+.password-toggle {
+  position: absolute;
+  right: 6px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: #37639a;
+}
+
+.password-toggle:hover {
+  background: #e7effa;
+}
+
+.password-toggle svg {
+  width: 18px;
+  height: 18px;
+}
+
 .auth-submit {
   width: 100%;
   margin-top: 4px;

@@ -163,7 +163,10 @@ export default function Layout() {
             <button className="mobile-menu-btn" type="button" onClick={() => setMobileOpen(true)} aria-label="Open menu">
               &#9776;
             </button>
-            <span>ShuleTrack</span>
+            <div className="mobile-topbar-brand">
+              <span className="sidebar-brand-icon mobile-brand-icon" aria-hidden="true"></span>
+              <span>ShuleTrack</span>
+            </div>
           </div>
         )}
         <Outlet />

@@ -47,6 +47,11 @@ function toNumber(value, fallback = 0) {
   return Number.isFinite(n) ? n : fallback;
 }
 
+function isStrongPassword(password) {
+  const value = String(password || "");
+  return value.length >= 6 && /[A-Za-z]/.test(value) && /\d/.test(value) && /[^A-Za-z0-9]/.test(value);
+}
+
 function gradeFromScale(avg, scale) {
   if (avg >= scale.a_min) return "A";
   if (avg >= scale.b_min) return "B";
@@ -95,6 +100,11 @@ app.post(
     const password = String(req.body.password || "");
 
     if (!name || !email || !password) return res.status(400).json({ error: "Missing fields" });
+    if (!isStrongPassword(password)) {
+      return res.status(400).json({
+        error: "Password must be at least 6 characters and include a letter, a number, and a special character.",
+      });
+    }
 
     try {
       const hash = await bcrypt.hash(password, 10);

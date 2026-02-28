@@ -260,25 +260,25 @@ export default function StudentsPage() {
                     s.gender
                   )}
                 </td>
-                <td>
+                <td className="table-actions-cell">
                   {editingId === s.id ? (
-                    <>
+                    <div className="table-actions">
                       <button className="btn" type="button" onClick={() => saveEdit(s.id)}>
                         Save
                       </button>
-                      <button className="btn btn-outline" type="button" onClick={cancelEdit} style={{ marginLeft: "6px" }}>
+                      <button className="btn btn-outline" type="button" onClick={cancelEdit}>
                         Cancel
                       </button>
-                    </>
+                    </div>
                   ) : (
-                    <>
+                    <div className="table-actions">
                       <button className="btn btn-outline" type="button" onClick={() => startEdit(s)}>
                         Edit
                       </button>
-                      <button className="btn btn-danger" type="button" onClick={() => remove(s.id)} style={{ marginLeft: "6px" }}>
+                      <button className="btn btn-danger" type="button" onClick={() => remove(s.id)}>
                         Remove
                       </button>
-                    </>
+                    </div>
                   )}
                 </td>
               </tr>

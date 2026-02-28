@@ -330,7 +330,7 @@ export default function TimetablePage() {
                 placeholder="e.g. Public holiday, teacher absent, school activity"
                 value={reasonText}
                 onChange={(e) => setReasonText(e.target.value)}
-                style={{ minWidth: "min(560px, 90vw)" }}
+                className="modal-flex-input"
               />
               <button className="btn btn-yellow" type="submit" disabled={reasonSaving}>
                 {reasonSaving ? "Saving..." : "Save Reason"}
@@ -443,8 +443,8 @@ export default function TimetablePage() {
                         </div>
                       )}
                     </td>
-                    <td>
-                      <div className="inline-form">
+                    <td className="table-actions-cell">
+                      <div className="inline-form table-actions">
                         <button className="btn btn-green" type="button" onClick={() => mark(l.id, true)}>
                           Attended
                         </button>

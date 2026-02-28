@@ -14,6 +14,10 @@ export default function AuthPage() {
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
+  function isStrongPassword(value: string) {
+    return value.length >= 6 && /[A-Za-z]/.test(value) && /\d/.test(value) && /[^A-Za-z0-9]/.test(value);
+  }
+
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     setSubmitting(true);
@@ -24,6 +28,9 @@ export default function AuthPage() {
       } else {
         if (password !== confirmPassword) {
           throw new Error("Passwords do not match");
+        }
+        if (!isStrongPassword(password)) {
+          throw new Error("Password must have at least 6 characters, one letter, one number, and one special character");
         }
         await register(name, email, password);
       }
@@ -128,6 +135,11 @@ export default function AuthPage() {
                 </button>
               </div>
             </label>
+          )}
+          {mode === "register" && (
+            <p className="muted auth-password-hint">
+              Use at least 6 characters with one letter, one number, and one special character.
+            </p>
           )}
           {error && <p className="error">{error}</p>}
           <button className="btn auth-submit" type="submit" disabled={submitting}>

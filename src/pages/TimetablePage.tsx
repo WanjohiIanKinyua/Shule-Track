@@ -29,7 +29,7 @@ type HistoryItem = {
   recorded_at: string;
 };
 
-const DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
+const DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 
 function sortClasses(items: ClassItem[]) {
   const rank = (name: string) => {
@@ -293,6 +293,7 @@ export default function TimetablePage() {
     if (raw.startsWith("wed")) return "Wednesday";
     if (raw.startsWith("thu")) return "Thursday";
     if (raw.startsWith("fri")) return "Friday";
+    if (raw.startsWith("sat")) return "Saturday";
     return "";
   }
 
@@ -608,7 +609,7 @@ export default function TimetablePage() {
           </button>
         </form>
         {!subjects.length && <p className="muted">Add subjects in Marks page before creating lessons.</p>}
-        <p className="muted">Use this to build the whole week by adding lessons for Monday to Friday.</p>
+        <p className="muted">Use this to build the whole week by adding lessons for Monday to Saturday.</p>
         <p className="muted">Expected columns: day, subject, start_time, end_time.</p>
         {!!importStatus && <p className="muted">{importStatus}</p>}
       </section>

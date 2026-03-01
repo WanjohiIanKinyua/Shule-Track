@@ -63,7 +63,7 @@ create table if not exists timetable_lessons (
   id uuid primary key default gen_random_uuid(),
   class_id uuid not null references classes(id) on delete cascade,
   subject_id uuid references subjects(id) on delete set null,
-  day_of_week text not null check (day_of_week in ('Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday')),
+  day_of_week text not null check (day_of_week in ('Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday')),
   start_time time not null,
   end_time time not null,
   attended boolean,

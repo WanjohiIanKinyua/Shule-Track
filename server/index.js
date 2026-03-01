@@ -65,6 +65,12 @@ async function ensureSchema() {
   const schemaSql = fs.readFileSync(path.join(__dirname, "schema.postgres.sql"), "utf8");
   await pool.query(schemaSql);
   await pool.query("alter table if exists attendance add column if not exists reason text");
+  await pool.query("alter table if exists timetable_lessons drop constraint if exists timetable_lessons_day_of_week_check");
+  await pool.query(`
+    alter table timetable_lessons
+    add constraint timetable_lessons_day_of_week_check
+    check (day_of_week in ('Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'))
+  `);
 }
 
 async function ensureDefaultExamTypes(teacherId) {
@@ -691,7 +697,8 @@ app.get(
           when 'Wednesday' then 3
           when 'Thursday' then 4
           when 'Friday' then 5
-          else 6
+          when 'Saturday' then 6
+          else 7
         end,
         t.start_time
       `,

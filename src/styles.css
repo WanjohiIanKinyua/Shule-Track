@@ -128,6 +128,8 @@ h4 {
 .sidebar-nav {
   padding: 14px 10px;
   flex: 1;
+  min-height: 0;
+  overflow-y: auto;
 }
 
 .nav-link {
@@ -157,6 +159,7 @@ h4 {
 .sidebar-footer {
   border-top: 1px solid rgba(255, 255, 255, 0.16);
   padding: 12px 10px 16px;
+  flex-shrink: 0;
 }
 
 .sidebar-email {

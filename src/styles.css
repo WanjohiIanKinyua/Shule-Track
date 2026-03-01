@@ -317,8 +317,8 @@ h4 {
 .subject-dropdown-menu {
   position: absolute;
   top: calc(100% + 6px);
-  left: 0;
-  width: min(560px, calc(100vw - 48px));
+  left: 8px;
+  width: min(520px, calc(100vw - 72px));
   background: #fff;
   border: 1px solid var(--border);
   border-radius: 10px;
@@ -1092,7 +1092,8 @@ td {
     grid-template-columns: 1fr;
   }
   .subject-dropdown-menu {
-    width: min(100%, calc(100vw - 42px));
+    left: 6px;
+    width: min(calc(100% - 12px), calc(100vw - 44px));
     grid-template-columns: 1fr;
     max-height: min(52vh, 360px);
     overflow-y: auto;

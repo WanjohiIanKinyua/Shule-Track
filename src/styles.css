@@ -857,6 +857,13 @@ td {
   font-size: 0.84rem;
 }
 
+.lesson-complete td:not(.table-actions-cell) {
+  text-decoration: line-through;
+  text-decoration-thickness: 1.5px;
+  text-decoration-color: #7d93b4;
+  color: #5e7496;
+}
+
 @media (max-width: 860px) {
   .app-shell {
     display: block;

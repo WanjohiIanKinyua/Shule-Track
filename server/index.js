@@ -79,6 +79,26 @@ async function ensureDefaultExamTypes(teacherId) {
   }
 }
 
+async function findTimetableCollision({ teacherId, dayOfWeek, startTime, endTime, excludeLessonId = null }) {
+  const result = await pool.query(
+    `
+    select c.name, c.stream
+    from timetable_lessons t
+    join classes c on c.id = t.class_id
+    where c.teacher_id = $1
+      and t.day_of_week = $2
+      and ($3::uuid is null or t.id <> $3::uuid)
+      and not (t.end_time <= $4::time or t.start_time >= $5::time)
+    limit 1
+    `,
+    [teacherId, dayOfWeek, excludeLessonId, startTime, endTime],
+  );
+
+  if (!result.rowCount) return null;
+  const row = result.rows[0];
+  return `${row.name}${row.stream ? ` - ${row.stream}` : ""}`;
+}
+
 function auth(req, res, next) {
   const token = req.headers.authorization?.replace("Bearer ", "");
   if (!token) return res.status(401).json({ error: "Unauthorized" });
@@ -702,11 +722,70 @@ app.post(
     const start_time = String(req.body.start_time || "").trim();
     const end_time = String(req.body.end_time || "").trim();
 
+    const collision = await findTimetableCollision({
+      teacherId: req.user.id,
+      dayOfWeek: day_of_week,
+      startTime: start_time,
+      endTime: end_time,
+    });
+    if (collision) {
+      return res.status(409).json({ error: `You have another class at this time: ${collision}.` });
+    }
+
     const row = await pool.query(
       "insert into timetable_lessons (class_id, subject_id, day_of_week, start_time, end_time) values ($1, $2, $3, $4::time, $5::time) returning *",
       [req.params.classId, subject_id || null, day_of_week, start_time, end_time],
     );
     res.json(row.rows[0]);
+  }),
+);
+
+app.put(
+  "/api/timetable/:id",
+  auth,
+  asyncHandler(async (req, res) => {
+    const lesson = await pool.query(
+      `
+      select t.id
+      from timetable_lessons t
+      join classes c on c.id = t.class_id
+      where t.id = $1 and c.teacher_id = $2
+      `,
+      [req.params.id, req.user.id],
+    );
+    if (!lesson.rowCount) return res.status(404).json({ error: "Lesson not found." });
+
+    const subject_id = String(req.body.subject_id || "").trim();
+    const day_of_week = String(req.body.day_of_week || "").trim();
+    const start_time = String(req.body.start_time || "").trim();
+    const end_time = String(req.body.end_time || "").trim();
+
+    if (!day_of_week || !start_time || !end_time) {
+      return res.status(400).json({ error: "Day and time are required." });
+    }
+
+    const collision = await findTimetableCollision({
+      teacherId: req.user.id,
+      dayOfWeek: day_of_week,
+      startTime: start_time,
+      endTime: end_time,
+      excludeLessonId: req.params.id,
+    });
+    if (collision) {
+      return res.status(409).json({ error: `You have another class at this time: ${collision}.` });
+    }
+
+    await pool.query(
+      `
+      update timetable_lessons
+      set subject_id = $1, day_of_week = $2, start_time = $3::time, end_time = $4::time
+      where id = $5
+      `,
+      [subject_id || null, day_of_week, start_time, end_time, req.params.id],
+    );
+
+    const updated = await pool.query("select * from timetable_lessons where id = $1", [req.params.id]);
+    res.json(updated.rows[0]);
   }),
 );
 

@@ -18,6 +18,16 @@ type Lesson = {
   compensation_date?: string | null;
   compensation_for_lesson_id?: string | null;
 };
+type HistoryItem = {
+  id: string;
+  lesson_id: string | null;
+  day_of_week: string;
+  start_time: string;
+  end_time: string;
+  status: "attended" | "not_attended";
+  reason: string | null;
+  recorded_at: string;
+};
 
 const DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
 
@@ -36,11 +46,33 @@ function sortClasses(items: ClassItem[]) {
   });
 }
 
+function formatDateLocal(value: Date) {
+  const year = value.getFullYear();
+  const month = String(value.getMonth() + 1).padStart(2, "0");
+  const day = String(value.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function weekBounds(dateValue: string) {
+  const base = new Date(`${dateValue}T00:00:00`);
+  const day = (base.getDay() + 6) % 7;
+  const start = new Date(base);
+  start.setDate(base.getDate() - day);
+  const end = new Date(start);
+  end.setDate(start.getDate() + 6);
+  return {
+    start: formatDateLocal(start),
+    end: formatDateLocal(end),
+  };
+}
+
 export default function TimetablePage() {
   const [classes, setClasses] = useState<ClassItem[]>([]);
   const [classId, setClassId] = useState("");
   const [subjects, setSubjects] = useState<Subject[]>([]);
   const [lessons, setLessons] = useState<Lesson[]>([]);
+  const [historyItems, setHistoryItems] = useState<HistoryItem[]>([]);
+  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().slice(0, 10));
   const [day_of_week, setDay] = useState("Monday");
   const [subject_id, setSubjectId] = useState("");
   const [start_time, setStartTime] = useState("08:00");
@@ -58,6 +90,17 @@ export default function TimetablePage() {
   const [reasonLesson, setReasonLesson] = useState<Lesson | null>(null);
   const [reasonText, setReasonText] = useState("");
   const [reasonSaving, setReasonSaving] = useState(false);
+  const [editLesson, setEditLesson] = useState<Lesson | null>(null);
+  const [editDay, setEditDay] = useState("Monday");
+  const [editSubjectId, setEditSubjectId] = useState("");
+  const [editStart, setEditStart] = useState("08:00");
+  const [editEnd, setEditEnd] = useState("08:40");
+  const [editSaving, setEditSaving] = useState(false);
+  const [noticeMessage, setNoticeMessage] = useState("");
+  const [pageMessage, setPageMessage] = useState("");
+
+  const today = new Date().toISOString().slice(0, 10);
+  const isPastDate = selectedDate < today;
 
   useEffect(() => {
     api("/classes").then((data) => {
@@ -68,13 +111,15 @@ export default function TimetablePage() {
   }, []);
 
   async function loadClassData(targetClassId: string) {
-    const [subjectsData, lessonsData] = await Promise.all([
+    const [subjectsData, lessonsData, historyData] = await Promise.all([
       api(`/classes/${targetClassId}/subjects`),
       api(`/classes/${targetClassId}/timetable`),
+      api(`/classes/${targetClassId}/timetable/history`),
     ]);
-    setSubjects(subjectsData);
-    setLessons(lessonsData);
-    if (subjectsData.length) setSubjectId(subjectsData[0].id);
+    setSubjects(subjectsData || []);
+    setLessons(lessonsData || []);
+    setHistoryItems(historyData || []);
+    if ((subjectsData || []).length) setSubjectId((current) => current || subjectsData[0].id);
   }
 
   useEffect(() => {
@@ -82,42 +127,94 @@ export default function TimetablePage() {
     loadClassData(classId);
   }, [classId]);
 
+  function openNotice(message: string) {
+    setNoticeMessage(message);
+  }
+
+  function openLockedNotice() {
+    setPageMessage("Previous timetable dates are view-only.");
+    openNotice("You cannot edit timetable details for a previous day.");
+  }
+
   async function addLesson(e: React.FormEvent) {
     e.preventDefault();
+    if (isPastDate) {
+      openLockedNotice();
+      return;
+    }
     if (!classId || !subject_id) return;
-    await api(`/classes/${classId}/timetable`, {
-      method: "POST",
-      body: JSON.stringify({ subject_id, day_of_week, start_time, end_time }),
-    });
-    await loadClassData(classId);
+    try {
+      await api(`/classes/${classId}/timetable`, {
+        method: "POST",
+        body: JSON.stringify({ subject_id, day_of_week, start_time, end_time }),
+      });
+      await loadClassData(classId);
+      setPageMessage("Lesson added. Keep adding lessons for Monday to Friday to build the whole week.");
+      setImportStatus("");
+    } catch (e: any) {
+      openNotice(e.message || "Could not add lesson.");
+    }
   }
 
   async function mark(lessonId: string, attended: boolean) {
+    if (isPastDate) {
+      openLockedNotice();
+      return;
+    }
     if (!attended) {
       const lesson = lessons.find((x) => String(x.id) === String(lessonId)) || null;
       setReasonLesson(lesson);
       setReasonText("");
       return;
     }
-    await api(`/timetable/${lessonId}`, {
-      method: "PATCH",
-      body: JSON.stringify({ attended: true, reason: "" }),
-    });
-    await loadClassData(classId);
+    try {
+      await api(`/timetable/${lessonId}`, {
+        method: "PATCH",
+        body: JSON.stringify({ attended: true, reason: "" }),
+      });
+      await loadClassData(classId);
+    } catch (e: any) {
+      openNotice(e.message || "Could not update lesson.");
+    }
   }
 
   async function removeLesson(id: string) {
+    if (isPastDate) {
+      openLockedNotice();
+      return;
+    }
     await api(`/timetable/${id}`, { method: "DELETE" });
     await loadClassData(classId);
   }
 
+  function openEditModal(lesson: Lesson) {
+    if (isPastDate) {
+      openLockedNotice();
+      return;
+    }
+    setEditLesson(lesson);
+    setEditDay(lesson.day_of_week || "Monday");
+    setEditSubjectId(lesson.subject_id || "");
+    setEditStart(lesson.start_time?.slice(0, 5) || "08:00");
+    setEditEnd(lesson.end_time?.slice(0, 5) || "08:40");
+  }
+
+  function closeEditModal() {
+    setEditLesson(null);
+    setEditSaving(false);
+  }
+
   function openCompensationModal(lesson: Lesson) {
+    if (isPastDate) {
+      openLockedNotice();
+      return;
+    }
     setCompLesson(lesson);
     setCompDay(lesson.day_of_week || "Monday");
     setCompStart(lesson.start_time?.slice(0, 5) || "08:00");
     setCompEnd(lesson.end_time?.slice(0, 5) || "08:40");
     setCompNote("");
-    setCompDate(new Date().toISOString().slice(0, 10));
+    setCompDate(selectedDate);
   }
 
   function closeCompensationModal() {
@@ -134,6 +231,11 @@ export default function TimetablePage() {
   async function submitNotAttendedReason(e: React.FormEvent) {
     e.preventDefault();
     if (!reasonLesson) return;
+    if (isPastDate) {
+      closeReasonModal();
+      openLockedNotice();
+      return;
+    }
     setReasonSaving(true);
     try {
       await api(`/timetable/${reasonLesson.id}`, {
@@ -142,6 +244,8 @@ export default function TimetablePage() {
       });
       await loadClassData(classId);
       closeReasonModal();
+    } catch (e: any) {
+      openNotice(e.message || "Could not save reason.");
     } finally {
       setReasonSaving(false);
     }
@@ -150,6 +254,11 @@ export default function TimetablePage() {
   async function submitCompensation(e: React.FormEvent) {
     e.preventDefault();
     if (!compLesson) return;
+    if (isPastDate) {
+      closeCompensationModal();
+      openLockedNotice();
+      return;
+    }
     setCompSaving(true);
     try {
       await api(`/timetable/${compLesson.id}/compensate`, {
@@ -164,6 +273,8 @@ export default function TimetablePage() {
       });
       await loadClassData(classId);
       closeCompensationModal();
+    } catch (e: any) {
+      openNotice(e.message || "Could not save compensation slot.");
     } finally {
       setCompSaving(false);
     }
@@ -252,7 +363,36 @@ export default function TimetablePage() {
   async function onImportChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
+    if (isPastDate) {
+      if (fileInputRef.current) fileInputRef.current.value = "";
+      openLockedNotice();
+      return;
+    }
     await importTimetableFile(file);
+  }
+
+  async function submitEditLesson(e: React.FormEvent) {
+    e.preventDefault();
+    if (!editLesson) return;
+    setEditSaving(true);
+    try {
+      await api(`/timetable/${editLesson.id}`, {
+        method: "PUT",
+        body: JSON.stringify({
+          subject_id: editSubjectId,
+          day_of_week: editDay,
+          start_time: editStart,
+          end_time: editEnd,
+        }),
+      });
+      await loadClassData(classId);
+      setPageMessage("Lesson updated.");
+      closeEditModal();
+    } catch (e: any) {
+      openNotice(e.message || "Could not update lesson.");
+    } finally {
+      setEditSaving(false);
+    }
   }
 
   function downloadTimetableTemplate() {
@@ -267,30 +407,90 @@ export default function TimetablePage() {
     XLSX.writeFile(wb, "timetable_import_template.xlsx");
   }
 
-  const coverage = useMemo(() => {
-    const total = lessons.length;
-    const attended = lessons.filter((l) => l.attended === true).length;
-    const missed = lessons.filter((l) => l.attended === false).length;
-    const compensated = lessons.filter((l) => l.compensated === true).length;
+  const selectedClassLabel = useMemo(() => {
+    const classItem = classes.find((c) => String(c.id) === String(classId));
+    return classItem ? `${classItem.name}${classItem.stream ? ` - ${classItem.stream}` : ""}` : "-";
+  }, [classes, classId]);
+
+  const weeklyState = useMemo(() => {
+    const { start, end } = weekBounds(selectedDate);
+    const latestByLesson = new Map<string, HistoryItem>();
+
+    historyItems.forEach((item) => {
+      const lessonId = String(item.lesson_id || "");
+      if (!lessonId) return;
+      const recordDate = formatDateLocal(new Date(item.recorded_at));
+      if (recordDate < start || recordDate > end) return;
+      const existing = latestByLesson.get(lessonId);
+      if (!existing || new Date(item.recorded_at).getTime() > new Date(existing.recorded_at).getTime()) {
+        latestByLesson.set(lessonId, item);
+      }
+    });
+
+    const completed = Array.from(latestByLesson.values());
+    const attended = completed.filter((item) => item.status === "attended").length;
+    const missed = completed.filter((item) => item.status === "not_attended").length;
+
     return {
-      total,
+      latestByLesson,
       attended,
       missed,
-      compensated,
-      percent: total ? ((attended / total) * 100).toFixed(1) : "0.0",
+      total: lessons.length,
+      compensated: lessons.filter((l) => l.compensated).length,
+      percent: lessons.length ? ((attended / lessons.length) * 100).toFixed(1) : "0.0",
     };
-  }, [lessons]);
+  }, [historyItems, lessons, selectedDate]);
 
   return (
     <div>
-      <h2>Timetable & Lesson Coverage</h2>
-      <p className="muted">Plan weekly lessons and track attended/not attended with reasons.</p>
+      {!!noticeMessage && (
+        <div className="modal-backdrop" role="dialog" aria-modal="true">
+          <div className="modal-card">
+            <h3>Timetable Notice</h3>
+            <p className="muted">{noticeMessage}</p>
+            <div className="inline-form">
+              <button className="btn" type="button" onClick={() => setNoticeMessage("")}>
+                OK
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {editLesson && (
+        <div className="modal-backdrop" role="dialog" aria-modal="true">
+          <div className="modal-card">
+            <h3>Edit Lesson</h3>
+            <form className="inline-form" onSubmit={submitEditLesson}>
+              <select value={editDay} onChange={(e) => setEditDay(e.target.value)} required>
+                {DAYS.map((d) => (
+                  <option key={d}>{d}</option>
+                ))}
+              </select>
+              <select value={editSubjectId} onChange={(e) => setEditSubjectId(e.target.value)} required disabled={!subjects.length}>
+                {subjects.map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {s.name}
+                  </option>
+                ))}
+              </select>
+              <input type="time" value={editStart} onChange={(e) => setEditStart(e.target.value)} required />
+              <input type="time" value={editEnd} onChange={(e) => setEditEnd(e.target.value)} required />
+              <button className="btn" type="submit" disabled={editSaving}>
+                {editSaving ? "Saving..." : "Save Changes"}
+              </button>
+              <button className="btn btn-outline" type="button" onClick={closeEditModal} disabled={editSaving}>
+                Cancel
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
       {compLesson && (
         <div className="modal-backdrop" role="dialog" aria-modal="true">
           <div className="modal-card">
             <h3>Add Compensation Slot</h3>
             <p className="muted">
-              For missed lesson: {compLesson.day_of_week} {compLesson.start_time?.slice(0, 5)} -{" "}
+              For missed lesson: {compLesson.day_of_week} {compLesson.start_time?.slice(0, 5)} - {" "}
               {compLesson.end_time?.slice(0, 5)}
             </p>
             <form className="inline-form" onSubmit={submitCompensation}>
@@ -302,11 +502,7 @@ export default function TimetablePage() {
               <input type="time" value={compStart} onChange={(e) => setCompStart(e.target.value)} required />
               <input type="time" value={compEnd} onChange={(e) => setCompEnd(e.target.value)} required />
               <input type="date" value={compDate} onChange={(e) => setCompDate(e.target.value)} />
-              <input
-                placeholder="Optional note"
-                value={compNote}
-                onChange={(e) => setCompNote(e.target.value)}
-              />
+              <input placeholder="Optional note" value={compNote} onChange={(e) => setCompNote(e.target.value)} />
               <button className="btn" type="submit" disabled={compSaving}>
                 {compSaving ? "Saving..." : "Save Compensation"}
               </button>
@@ -322,7 +518,7 @@ export default function TimetablePage() {
           <div className="modal-card">
             <h3>Reason For Not Attended</h3>
             <p className="muted">
-              Lesson: {reasonLesson.day_of_week} {reasonLesson.start_time?.slice(0, 5)} -{" "}
+              Lesson: {reasonLesson.day_of_week} {reasonLesson.start_time?.slice(0, 5)} - {" "}
               {reasonLesson.end_time?.slice(0, 5)}
             </p>
             <form className="inline-form" onSubmit={submitNotAttendedReason}>
@@ -342,6 +538,10 @@ export default function TimetablePage() {
           </div>
         </div>
       )}
+
+      <h2>Timetable & Lesson Coverage</h2>
+      <p className="muted">Plan weekly lessons and track attended/not attended with reasons.</p>
+
       <section className="panel">
         <div className="inline-form">
           <select value={classId} onChange={(e) => setClassId(e.target.value)} disabled={!classes.length}>
@@ -351,13 +551,29 @@ export default function TimetablePage() {
               </option>
             ))}
           </select>
-          <span className="tag tag-blue">Total: {coverage.total}</span>
-          <span className="tag tag-green">Attended: {coverage.attended}</span>
-          <span className="tag tag-red">Not attended: {coverage.missed}</span>
-          <span className="tag">Compensated: {coverage.compensated}</span>
-          <span className="tag tag-yellow">Coverage: {coverage.percent}%</span>
+          <input
+            type="date"
+            value={selectedDate}
+            onChange={(e) => {
+              const value = e.target.value;
+              setSelectedDate(value);
+              if (value < today) {
+                setPageMessage("Previous timetable dates are view-only.");
+              } else {
+                setPageMessage("");
+              }
+            }}
+          />
+          <span className="tag tag-blue">Class: {selectedClassLabel}</span>
+          <span className="tag tag-blue">Total: {weeklyState.total}</span>
+          <span className="tag tag-green">Attended: {weeklyState.attended}</span>
+          <span className="tag tag-red">Not attended: {weeklyState.missed}</span>
+          <span className="tag">Compensated: {weeklyState.compensated}</span>
+          <span className="tag tag-yellow">Coverage: {weeklyState.percent}%</span>
         </div>
+        {!!pageMessage && <p className="muted">{pageMessage}</p>}
       </section>
+
       <section className="panel">
         <h3>Add Lesson</h3>
         <form className="inline-form" onSubmit={addLesson}>
@@ -378,13 +594,7 @@ export default function TimetablePage() {
           <button className="btn" type="submit" disabled={!classId || !subject_id}>
             Add
           </button>
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept=".xlsx,.xls,.csv"
-            onChange={onImportChange}
-            style={{ display: "none" }}
-          />
+          <input ref={fileInputRef} type="file" accept=".xlsx,.xls,.csv" onChange={onImportChange} style={{ display: "none" }} />
           <button
             className="btn btn-outline"
             type="button"
@@ -398,9 +608,11 @@ export default function TimetablePage() {
           </button>
         </form>
         {!subjects.length && <p className="muted">Add subjects in Marks page before creating lessons.</p>}
+        <p className="muted">Use this to build the whole week by adding lessons for Monday to Friday.</p>
         <p className="muted">Expected columns: day, subject, start_time, end_time.</p>
         {!!importStatus && <p className="muted">{importStatus}</p>}
       </section>
+
       {DAYS.map((day) => {
         const dayLessons = lessons.filter((l) => l.day_of_week === day);
         if (!dayLessons.length) return null;
@@ -411,6 +623,7 @@ export default function TimetablePage() {
               <thead>
                 <tr>
                   <th>Time</th>
+                  <th>Class</th>
                   <th>Subject</th>
                   <th>Status</th>
                   <th>Reason</th>
@@ -418,51 +631,55 @@ export default function TimetablePage() {
                 </tr>
               </thead>
               <tbody>
-                {dayLessons.map((l) => (
-                  <tr key={l.id}>
-                    <td>
-                      {l.start_time.slice(0, 5)} - {l.end_time.slice(0, 5)}
-                    </td>
-                    <td>{l.subject_name || "-"}</td>
-                    <td>
-                      {l.attended === null && <span className="tag">Pending</span>}
-                      {l.attended === true && <span className="tag tag-green">Attended</span>}
-                      {l.attended === false && <span className="tag tag-red">Not attended</span>}
-                      {l.attended === false && l.compensated === true && (
-                        <span className="tag tag-blue" style={{ marginLeft: "6px" }}>
-                          Compensated
-                        </span>
-                      )}
-                    </td>
-                    <td>
-                      {l.reason || "-"}
-                      {l.compensated && (
-                        <div className="muted" style={{ marginTop: "4px", fontSize: "0.85rem" }}>
-                          {l.compensation_date ? `Comp date: ${l.compensation_date}. ` : ""}
-                          {l.compensation_note || ""}
-                        </div>
-                      )}
-                    </td>
-                    <td className="table-actions-cell">
-                      <div className="inline-form table-actions">
-                        <button className="btn btn-green" type="button" onClick={() => mark(l.id, true)}>
-                          Attended
-                        </button>
-                        <button className="btn btn-yellow" type="button" onClick={() => mark(l.id, false)}>
-                          Not Attended
-                        </button>
-                        {l.attended === false && !l.compensated && (
-                          <button className="btn btn-outline" type="button" onClick={() => openCompensationModal(l)}>
-                            Add Compensation Slot
-                          </button>
+                {dayLessons.map((l) => {
+                  const weeklyEntry = weeklyState.latestByLesson.get(String(l.id));
+                  const isCompleted = !!weeklyEntry;
+                  const weeklyReason = weeklyEntry?.reason || "-";
+                  return (
+                    <tr key={l.id} className={isCompleted ? "lesson-complete" : ""}>
+                      <td>
+                        {l.start_time.slice(0, 5)} - {l.end_time.slice(0, 5)}
+                      </td>
+                      <td>{selectedClassLabel}</td>
+                      <td>{l.subject_name || "-"}</td>
+                      <td>
+                        {!weeklyEntry && <span className="tag">Pending</span>}
+                        {weeklyEntry?.status === "attended" && <span className="tag tag-green">Completed</span>}
+                        {weeklyEntry?.status === "not_attended" && <span className="tag tag-red">Not Attended</span>}
+                      </td>
+                      <td>
+                        {weeklyReason}
+                        {weeklyEntry?.status === "not_attended" && l.compensated && (
+                          <div className="muted" style={{ marginTop: "4px", fontSize: "0.85rem" }}>
+                            {l.compensation_date ? `Comp date: ${l.compensation_date}. ` : ""}
+                            {l.compensation_note || ""}
+                          </div>
                         )}
-                        <button className="btn btn-danger" type="button" onClick={() => removeLesson(l.id)}>
-                          Delete
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
+                      </td>
+                      <td className="table-actions-cell">
+                        <div className="inline-form table-actions">
+                          <button className="btn btn-outline" type="button" onClick={() => openEditModal(l)}>
+                            Edit
+                          </button>
+                          <button className="btn btn-green" type="button" onClick={() => mark(l.id, true)} disabled={isCompleted}>
+                            Attended
+                          </button>
+                          <button className="btn btn-yellow" type="button" onClick={() => mark(l.id, false)} disabled={isCompleted}>
+                            Not Attended
+                          </button>
+                          {weeklyEntry?.status === "not_attended" && (
+                            <button className="btn btn-outline" type="button" onClick={() => openCompensationModal(l)}>
+                              Add Compensation Slot
+                            </button>
+                          )}
+                          <button className="btn btn-danger" type="button" onClick={() => removeLesson(l.id)}>
+                            Delete
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </section>

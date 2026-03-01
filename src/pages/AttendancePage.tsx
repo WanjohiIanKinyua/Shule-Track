@@ -195,30 +195,42 @@ export default function AttendancePage() {
                 <td>{s.full_name}</td>
                 <td>{s.gender}</td>
                 <td>
-                  <button
-                    className={attendance[s.id] === "present" ? "btn btn-green" : "btn btn-danger"}
-                    onClick={() => {
-                      if (isPastDate) {
-                        openLockedNotice();
-                        return;
-                      }
-                      if (attendance[s.id] === "present") {
+                  <div className="inline-form attendance-actions">
+                    <button
+                      className={attendance[s.id] === "present" ? "btn btn-green" : "btn btn-outline"}
+                      type="button"
+                      onClick={() => {
+                        if (isPastDate) {
+                          openLockedNotice();
+                          return;
+                        }
+                        setAttendance((prev) => ({
+                          ...prev,
+                          [s.id]: "present",
+                        }));
+                        setAbsenceReasons((prev) => {
+                          const next = { ...prev };
+                          delete next[s.id];
+                          return next;
+                        });
+                      }}
+                    >
+                      Present
+                    </button>
+                    <button
+                      className={attendance[s.id] === "absent" ? "btn btn-danger" : "btn btn-outline"}
+                      type="button"
+                      onClick={() => {
+                        if (isPastDate) {
+                          openLockedNotice();
+                          return;
+                        }
                         openAbsentReason(s);
-                        return;
-                      }
-                      setAttendance((prev) => ({
-                        ...prev,
-                        [s.id]: "present",
-                      }));
-                      setAbsenceReasons((prev) => {
-                        const next = { ...prev };
-                        delete next[s.id];
-                        return next;
-                      });
-                    }}
-                  >
-                    {attendance[s.id] === "present" ? "Present" : "Absent"}
-                  </button>
+                      }}
+                    >
+                      Absent
+                    </button>
+                  </div>
                   {attendance[s.id] === "absent" && !!absenceReasons[s.id] && (
                     <div className="muted attendance-reason-text">{absenceReasons[s.id]}</div>
                   )}

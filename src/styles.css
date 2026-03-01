@@ -318,24 +318,29 @@ h4 {
   position: absolute;
   top: calc(100% + 6px);
   left: 0;
-  width: min(620px, 92vw);
+  width: min(760px, calc(100vw - 48px));
+  max-width: 100%;
   background: #fff;
   border: 1px solid var(--border);
   border-radius: 10px;
   box-shadow: 0 8px 18px rgba(16, 35, 65, 0.12);
   padding: 10px;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px 14px;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  gap: 10px 14px;
   z-index: 20;
+  overflow-x: hidden;
 }
 
 .subject-option {
-  display: inline-flex;
-  align-items: center;
+  display: flex;
+  align-items: flex-start;
   gap: 6px;
   color: #153c6f;
   font-size: 0.95rem;
+  min-width: 0;
+  white-space: normal;
+  line-height: 1.35;
 }
 
 .marks-panel {
@@ -857,6 +862,11 @@ td {
   font-size: 0.84rem;
 }
 
+.attendance-actions {
+  gap: 6px;
+  align-items: center;
+}
+
 .lesson-complete td:not(.table-actions-cell) {
   text-decoration: line-through;
   text-decoration-thickness: 1.5px;
@@ -983,6 +993,12 @@ td {
   }
   .marks-two-cards {
     grid-template-columns: 1fr;
+  }
+  .subject-dropdown-menu {
+    width: min(100%, calc(100vw - 42px));
+    grid-template-columns: 1fr;
+    max-height: min(52vh, 360px);
+    overflow-y: auto;
   }
   .panel {
     max-width: 100%;

@@ -64,6 +64,7 @@ function gradeFromScale(avg, scale) {
 async function ensureSchema() {
   const schemaSql = fs.readFileSync(path.join(__dirname, "schema.postgres.sql"), "utf8");
   await pool.query(schemaSql);
+  await pool.query("alter table if exists attendance add column if not exists reason text");
 }
 
 async function ensureDefaultExamTypes(teacherId) {
@@ -407,7 +408,7 @@ app.get(
 
     const rows = await pool.query(
       `
-      select a.student_id, a.status
+      select a.student_id, a.status, a.reason
       from attendance a
       join classes c on c.id = a.class_id
       where a.class_id = $1 and a.date = $2::date and c.teacher_id = $3
@@ -455,12 +456,12 @@ app.post(
       for (const r of records) {
         await client.query(
           `
-          insert into attendance (student_id, class_id, date, status)
-          values ($1, $2, $3::date, $4)
+          insert into attendance (student_id, class_id, date, status, reason)
+          values ($1, $2, $3::date, $4, $5)
           on conflict (student_id, date)
-          do update set status = excluded.status, class_id = excluded.class_id
+          do update set status = excluded.status, class_id = excluded.class_id, reason = excluded.reason
           `,
-          [r.student_id, req.params.classId, date, r.status],
+          [r.student_id, req.params.classId, date, r.status, r.status === "absent" ? String(r.reason || "").trim() || null : null],
         );
       }
       await client.query("COMMIT");

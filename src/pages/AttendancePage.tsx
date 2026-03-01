@@ -1,19 +1,26 @@
 import { useEffect, useMemo, useState } from "react";
 import { api } from "../lib/api";
-import { useNavigate, useParams } from "react-router-dom";
+import { useParams } from "react-router-dom";
 
 type ClassItem = { id: string; name: string; stream: string | null };
 type Student = { id: string; full_name: string; admission_number: string; gender: string };
 type AttendanceStatus = "present" | "absent";
+type AttendanceRow = { student_id: string; status: AttendanceStatus; reason?: string | null };
 
 export default function AttendancePage() {
-  const navigate = useNavigate();
   const params = useParams();
   const [classes, setClasses] = useState<ClassItem[]>([]);
   const [classId, setClassId] = useState("");
   const [students, setStudents] = useState<Student[]>([]);
   const [date, setDate] = useState(params.date || new Date().toISOString().slice(0, 10));
   const [attendance, setAttendance] = useState<Record<string, AttendanceStatus>>({});
+  const [absenceReasons, setAbsenceReasons] = useState<Record<string, string>>({});
+  const [reasonStudent, setReasonStudent] = useState<Student | null>(null);
+  const [reasonDraft, setReasonDraft] = useState("");
+  const [message, setMessage] = useState("");
+
+  const today = new Date().toISOString().slice(0, 10);
+  const isPastDate = date < today;
 
   useEffect(() => {
     if (params.date) setDate(params.date);
@@ -32,13 +39,16 @@ export default function AttendancePage() {
       ([studentsData, attendanceData]) => {
         setStudents(studentsData);
         const map: Record<string, AttendanceStatus> = {};
+        const reasonsMap: Record<string, string> = {};
         studentsData.forEach((s: Student) => {
           map[s.id] = "present";
         });
-        attendanceData.forEach((r: { student_id: string; status: AttendanceStatus }) => {
+        attendanceData.forEach((r: AttendanceRow) => {
           map[r.student_id] = r.status;
+          if (r.status === "absent" && r.reason) reasonsMap[r.student_id] = String(r.reason);
         });
         setAttendance(map);
+        setAbsenceReasons(reasonsMap);
       },
     );
   }, [classId, date]);
@@ -51,16 +61,70 @@ export default function AttendancePage() {
 
   async function save() {
     if (!classId) return;
-    const records = Object.entries(attendance).map(([student_id, status]) => ({ student_id, status }));
+    if (isPastDate) {
+      setMessage("Previous attendance records are view-only.");
+      window.alert("You cannot edit attendance for a previous day.");
+      return;
+    }
+    const records = Object.entries(attendance).map(([student_id, status]) => ({
+      student_id,
+      status,
+      reason: status === "absent" ? absenceReasons[student_id] || "" : "",
+    }));
     await api(`/classes/${classId}/attendance`, {
       method: "POST",
       body: JSON.stringify({ date, records }),
     });
+    setMessage("");
     alert("Attendance saved.");
+  }
+
+  function openAbsentReason(student: Student) {
+    setReasonStudent(student);
+    setReasonDraft(absenceReasons[student.id] || "");
+  }
+
+  function closeAbsentReason() {
+    setReasonStudent(null);
+    setReasonDraft("");
+  }
+
+  function confirmAbsentReason() {
+    if (!reasonStudent) return;
+    setAttendance((prev) => ({ ...prev, [reasonStudent.id]: "absent" }));
+    setAbsenceReasons((prev) => ({
+      ...prev,
+      [reasonStudent.id]: reasonDraft.trim(),
+    }));
+    closeAbsentReason();
   }
 
   return (
     <div>
+      {reasonStudent && (
+        <div className="modal-backdrop" role="dialog" aria-modal="true">
+          <div className="modal-card">
+            <h3>Optional Absence Reason</h3>
+            <p className="muted">
+              Add a reason for {reasonStudent.full_name} being absent, or leave it empty.
+            </p>
+            <div className="inline-form">
+              <input
+                className="modal-flex-input"
+                placeholder="e.g. Sick, sent home, absent with permission"
+                value={reasonDraft}
+                onChange={(e) => setReasonDraft(e.target.value)}
+              />
+              <button className="btn btn-danger" type="button" onClick={confirmAbsentReason}>
+                Mark Absent
+              </button>
+              <button className="btn btn-outline" type="button" onClick={closeAbsentReason}>
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       <h2>Attendance</h2>
       <p className="muted">Mark daily attendance as present or absent.</p>
       <section className="panel">
@@ -78,7 +142,11 @@ export default function AttendancePage() {
             onChange={(e) => {
               const newDate = e.target.value;
               setDate(newDate);
-              navigate(`/dashboard/attendance/${newDate}`);
+              if (newDate < today) {
+                setMessage("Previous attendance records are view-only.");
+              } else {
+                setMessage("");
+              }
             }}
           />
           <span className="tag tag-green">Present: {summary.present}</span>
@@ -87,6 +155,7 @@ export default function AttendancePage() {
             Save
           </button>
         </div>
+        {!!message && <p className="muted">{message}</p>}
       </section>
       <section className="panel">
         <table>
@@ -109,15 +178,32 @@ export default function AttendancePage() {
                 <td>
                   <button
                     className={attendance[s.id] === "present" ? "btn btn-green" : "btn btn-danger"}
-                    onClick={() =>
+                    onClick={() => {
+                      if (isPastDate) {
+                        setMessage("Previous attendance records are view-only.");
+                        window.alert("You cannot edit attendance for a previous day.");
+                        return;
+                      }
+                      if (attendance[s.id] === "present") {
+                        openAbsentReason(s);
+                        return;
+                      }
                       setAttendance((prev) => ({
                         ...prev,
-                        [s.id]: prev[s.id] === "present" ? "absent" : "present",
-                      }))
-                    }
+                        [s.id]: "present",
+                      }));
+                      setAbsenceReasons((prev) => {
+                        const next = { ...prev };
+                        delete next[s.id];
+                        return next;
+                      });
+                    }}
                   >
                     {attendance[s.id] === "present" ? "Present" : "Absent"}
                   </button>
+                  {attendance[s.id] === "absent" && !!absenceReasons[s.id] && (
+                    <div className="muted attendance-reason-text">{absenceReasons[s.id]}</div>
+                  )}
                 </td>
               </tr>
             ))}

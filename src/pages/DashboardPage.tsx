@@ -23,7 +23,7 @@ export default function DashboardPage() {
   const [stream, setStream] = useState("");
   const [error, setError] = useState("");
   const [showCreate, setShowCreate] = useState(false);
-  const [selectedClass, setSelectedClass] = useState<ClassItem | null>(null);
+  const [selectedClassId, setSelectedClassId] = useState("");
   const [summary, setSummary] = useState<Summary | null>(null);
   const [summaryLoading, setSummaryLoading] = useState(false);
 
@@ -64,7 +64,14 @@ export default function DashboardPage() {
   }
 
   async function openSummary(classItem: ClassItem) {
-    setSelectedClass(classItem);
+    if (selectedClassId === classItem.id) {
+      setSelectedClassId("");
+      setSummary(null);
+      setSummaryLoading(false);
+      return;
+    }
+
+    setSelectedClassId(classItem.id);
     setSummaryLoading(true);
     setSummary(null);
     try {
@@ -72,6 +79,7 @@ export default function DashboardPage() {
       setSummary(data);
     } catch (err: any) {
       setError(err.message || "Failed to load class summary");
+      setSelectedClassId("");
     } finally {
       setSummaryLoading(false);
     }
@@ -133,8 +141,58 @@ export default function DashboardPage() {
             <p className="muted">{c.year}</p>
             <p className="dashboard-students">{c.student_count} students</p>
             <button className="btn btn-outline dashboard-summary-btn" onClick={() => openSummary(c)} type="button">
-              View Summary
+              {selectedClassId === c.id ? "Hide Summary" : "View Summary"}
             </button>
+            {selectedClassId === c.id && (
+              <section className="dashboard-summary-inline">
+                {summaryLoading && <p className="muted">Loading summary...</p>}
+
+                {!summaryLoading && summary && (
+                  <>
+                    <div className="summary-row">
+                      <span className="tag tag-blue">Class Avg: {summary.class_average}%</span>
+                      <span className="tag tag-yellow">Overall Grade: {summary.class_grade}</span>
+                      <span className="tag tag-green">Attendance: {summary.attendance_rate}%</span>
+                    </div>
+
+                    <div className="dashboard-graphs">
+                      <div className="dashboard-graph">
+                        <h4>Grade Distribution</h4>
+                        {(["A", "B", "C", "D", "E"] as const).map((grade) => {
+                          const total = Object.values(summary.grade_breakdown).reduce((a, b) => a + b, 0);
+                          const value = summary.grade_breakdown[grade];
+                          const percent = total ? (value / total) * 100 : 0;
+                          return (
+                            <div key={grade} className="graph-row">
+                              <span className="graph-label">{grade}</span>
+                              <div className="graph-track">
+                                <div className="graph-fill" style={{ width: `${percent}%` }} />
+                              </div>
+                              <span className="graph-value">{value}</span>
+                            </div>
+                          );
+                        })}
+                      </div>
+
+                      <div className="dashboard-graph">
+                        <h4>Attendance Trend</h4>
+                        {!summary.trends.length && <p className="muted">No attendance trend yet.</p>}
+                        {!!summary.trends.length &&
+                          summary.trends.map((t) => (
+                            <div key={t.week_start} className="graph-row">
+                              <span className="graph-label">{t.week_start}</span>
+                              <div className="graph-track">
+                                <div className="graph-fill graph-fill-attendance" style={{ width: `${t.attendance_rate}%` }} />
+                              </div>
+                              <span className="graph-value">{t.attendance_rate}%</span>
+                            </div>
+                          ))}
+                      </div>
+                    </div>
+                  </>
+                )}
+              </section>
+            )}
           </article>
         ))}
         {!classes.length && (
@@ -144,65 +202,6 @@ export default function DashboardPage() {
         )}
       </section>
 
-      {selectedClass && (
-        <section className="panel dashboard-summary">
-          <div className="panel-head">
-            <h3>
-              {selectedClass.name} {selectedClass.stream ? `- ${selectedClass.stream}` : ""} Summary
-            </h3>
-            <button className="btn btn-ghost" onClick={() => setSelectedClass(null)} type="button">
-              Close
-            </button>
-          </div>
-
-          {summaryLoading && <p className="muted">Loading summary...</p>}
-
-          {!summaryLoading && summary && (
-            <>
-              <div className="summary-row">
-                <span className="tag tag-blue">Class Avg: {summary.class_average}%</span>
-                <span className="tag tag-yellow">Overall Grade: {summary.class_grade}</span>
-                <span className="tag tag-green">Attendance: {summary.attendance_rate}%</span>
-              </div>
-
-              <div className="dashboard-graphs">
-                <div className="dashboard-graph">
-                  <h4>Grade Distribution</h4>
-                  {(["A", "B", "C", "D", "E"] as const).map((grade) => {
-                    const total = Object.values(summary.grade_breakdown).reduce((a, b) => a + b, 0);
-                    const value = summary.grade_breakdown[grade];
-                    const percent = total ? (value / total) * 100 : 0;
-                    return (
-                      <div key={grade} className="graph-row">
-                        <span className="graph-label">{grade}</span>
-                        <div className="graph-track">
-                          <div className="graph-fill" style={{ width: `${percent}%` }} />
-                        </div>
-                        <span className="graph-value">{value}</span>
-                      </div>
-                    );
-                  })}
-                </div>
-
-                <div className="dashboard-graph">
-                  <h4>Attendance Trend</h4>
-                  {!summary.trends.length && <p className="muted">No attendance trend yet.</p>}
-                  {!!summary.trends.length &&
-                    summary.trends.map((t) => (
-                      <div key={t.week_start} className="graph-row">
-                        <span className="graph-label">{t.week_start}</span>
-                        <div className="graph-track">
-                          <div className="graph-fill graph-fill-attendance" style={{ width: `${t.attendance_rate}%` }} />
-                        </div>
-                        <span className="graph-value">{t.attendance_rate}%</span>
-                      </div>
-                    ))}
-                </div>
-              </div>
-            </>
-          )}
-        </section>
-      )}
     </div>
   );
 }

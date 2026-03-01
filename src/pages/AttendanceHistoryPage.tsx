@@ -5,6 +5,7 @@ import * as XLSX from "xlsx-js-style";
 type ClassItem = { id: string; name: string; stream: string | null };
 type Student = { id: string; full_name: string; admission_number: string; gender: string };
 type AttendanceStatus = "present" | "absent";
+type AttendanceRecord = { status: AttendanceStatus; reason: string };
 type HistoryRow = { date: string; total_students: number; present_count: number; absent_count: number };
 
 const WEEKDAY_NAMES = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
@@ -44,9 +45,12 @@ export default function AttendanceHistoryPage() {
 
   async function fetchAttendanceMap(date: string) {
     const rows = await api(`/classes/${classId}/attendance?date=${date}`);
-    const map: Record<string, AttendanceStatus> = {};
-    (rows || []).forEach((r: { student_id: string; status: AttendanceStatus }) => {
-      map[String(r.student_id)] = r.status;
+    const map: Record<string, AttendanceRecord> = {};
+    (rows || []).forEach((r: { student_id: string; status: AttendanceStatus; reason?: string | null }) => {
+      map[String(r.student_id)] = {
+        status: r.status,
+        reason: r.reason ? String(r.reason) : "",
+      };
     });
     return map;
   }
@@ -92,7 +96,7 @@ export default function AttendanceHistoryPage() {
         }
       }
     }
-    ws["!cols"] = [{ wch: 18 }, { wch: 26 }, { wch: 12 }, { wch: 12 }, { wch: 14 }];
+    ws["!cols"] = [{ wch: 18 }, { wch: 26 }, { wch: 12 }, { wch: 12 }, { wch: 14 }, { wch: 24 }];
   }
 
   async function downloadDay(date: string) {
@@ -101,11 +105,11 @@ export default function AttendanceHistoryPage() {
     setMessage("");
     try {
       const map = await fetchAttendanceMap(date);
-      const aoa: (string | number)[][] = [["Admission Number", "Name", "Gender", "Date", "Status"]];
+      const aoa: (string | number)[][] = [["Admission Number", "Name", "Gender", "Date", "Status", "Reason"]];
       students.forEach((s) => {
-        const raw = map[String(s.id)];
-        const status = raw === "present" ? "Present" : raw === "absent" ? "Absent" : "Not Marked";
-        aoa.push([s.admission_number, s.full_name, s.gender, date, status]);
+        const row = map[String(s.id)];
+        const status = row?.status === "present" ? "Present" : row?.status === "absent" ? "Absent" : "Not Marked";
+        aoa.push([s.admission_number, s.full_name, s.gender, date, status, row?.reason || ""]);
       });
       const ws = XLSX.utils.aoa_to_sheet(aoa);
       styleSheet(ws, 4);
@@ -145,11 +149,11 @@ export default function AttendanceHistoryPage() {
       for (let i = 0; i < days.length; i++) {
         const date = days[i];
         const map = await fetchAttendanceMap(date);
-        const aoa: (string | number)[][] = [["Admission Number", "Name", "Gender", "Date", "Status"]];
+        const aoa: (string | number)[][] = [["Admission Number", "Name", "Gender", "Date", "Status", "Reason"]];
         students.forEach((s) => {
-          const raw = map[String(s.id)];
-          const status = raw === "present" ? "Present" : raw === "absent" ? "Absent" : "Not Marked";
-          aoa.push([s.admission_number, s.full_name, s.gender, date, status]);
+          const row = map[String(s.id)];
+          const status = row?.status === "present" ? "Present" : row?.status === "absent" ? "Absent" : "Not Marked";
+          aoa.push([s.admission_number, s.full_name, s.gender, date, status, row?.reason || ""]);
         });
         const ws = XLSX.utils.aoa_to_sheet(aoa);
         styleSheet(ws, 4);

@@ -19,23 +19,8 @@ const DEFAULT_SUBJECTS = [
   "History",
   "Geography",
   "CRE",
-  "IRE",
-  "HRE",
   "Business Studies",
   "Computer Studies",
-  "Home Science",
-  "French",
-  "German",
-  "Arabic",
-  "Music",
-  "Art and Design",
-  "Drawing and Design",
-  "Wood Work",
-  "Metal Work",
-  "Building Construction",
-  "Electricity",
-  "Power Mechanics",
-  "Aviation Technology",
 ];
 
 type GradeScale = {

@@ -326,7 +326,7 @@ h4 {
   box-shadow: 0 8px 18px rgba(16, 35, 65, 0.12);
   padding: 10px;
   display: grid;
-  grid-template-columns: repeat(4, minmax(150px, 1fr));
+  grid-template-columns: repeat(3, minmax(180px, 1fr));
   gap: 12px 16px;
   z-index: 20;
   overflow-x: hidden;

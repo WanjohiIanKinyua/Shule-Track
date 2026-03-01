@@ -1,15 +1,15 @@
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:4000/api";
 
 export function getToken() {
-  return localStorage.getItem("shule_token");
+  return sessionStorage.getItem("shule_token");
 }
 
 export function setToken(token: string) {
-  localStorage.setItem("shule_token", token);
+  sessionStorage.setItem("shule_token", token);
 }
 
 export function clearToken() {
-  localStorage.removeItem("shule_token");
+  sessionStorage.removeItem("shule_token");
 }
 
 export async function api(path: string, options: RequestInit = {}) {

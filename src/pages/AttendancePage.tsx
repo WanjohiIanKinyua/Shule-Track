@@ -19,6 +19,7 @@ export default function AttendancePage() {
   const [reasonDraft, setReasonDraft] = useState("");
   const [message, setMessage] = useState("");
   const [lockedNoticeOpen, setLockedNoticeOpen] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
 
   const today = new Date().toISOString().slice(0, 10);
   const isPastDate = date < today;
@@ -59,6 +60,12 @@ export default function AttendancePage() {
     const present = values.filter((v) => v === "present").length;
     return { present, absent: values.length - present };
   }, [attendance]);
+
+  const visibleStudents = useMemo(() => {
+    const query = searchTerm.trim().toLowerCase();
+    if (!query) return students;
+    return students.filter((student) => student.full_name.toLowerCase().includes(query));
+  }, [students, searchTerm]);
 
   async function save() {
     if (!classId) return;
@@ -174,6 +181,13 @@ export default function AttendancePage() {
             Save
           </button>
         </div>
+        <div className="inline-form" style={{ marginTop: "10px" }}>
+          <input
+            placeholder="Search student by name"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+          />
+        </div>
         {!!message && <p className="muted">{message}</p>}
       </section>
       <section className="panel">
@@ -188,7 +202,7 @@ export default function AttendancePage() {
             </tr>
           </thead>
           <tbody>
-            {students.map((s, index) => (
+            {visibleStudents.map((s, index) => (
               <tr key={s.id}>
                 <td>{index + 1}</td>
                 <td>{s.admission_number}</td>
@@ -237,10 +251,14 @@ export default function AttendancePage() {
                 </td>
               </tr>
             ))}
-            {!students.length && (
+            {!visibleStudents.length && (
               <tr>
                 <td colSpan={5} className="muted">
-                  {classId ? "No students in this class yet." : "Create a class first in Dashboard."}
+                  {students.length
+                    ? "No student matches that name."
+                    : classId
+                      ? "No students in this class yet."
+                      : "Create a class first in Dashboard."}
                 </td>
               </tr>
             )}

@@ -30,6 +30,7 @@ export default function MarksPage() {
   const [newExamType, setNewExamType] = useState("");
   const [term, setTerm] = useState("Term 1");
   const [marks, setMarks] = useState<Record<string, number>>({});
+  const [searchTerm, setSearchTerm] = useState("");
   const [gradeScale, setGradeScale] = useState<GradeScale>({
     a_min: 80,
     b_min: 60,
@@ -453,6 +454,12 @@ export default function MarksPage() {
     });
   }, [students, marks, gradeScale.average_multiplier]);
 
+  const visibleStudents = useMemo(() => {
+    const query = searchTerm.trim().toLowerCase();
+    if (!query) return sortedStudents;
+    return sortedStudents.filter((student) => student.full_name.toLowerCase().includes(query));
+  }, [sortedStudents, searchTerm]);
+
   const classSummary = useMemo(
     () => ({
       totalScore: totalScore.toFixed(1),
@@ -657,6 +664,13 @@ export default function MarksPage() {
             <span className="tag tag-yellow">Class Avg: {classSummary.average}%</span>
             <span className="tag tag-green">Class Grade: {classSummary.grade}</span>
           </div>
+          <div className="inline-form" style={{ marginTop: "10px" }}>
+            <input
+              placeholder="Search student by name"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+          </div>
           <table>
             <thead>
               <tr>
@@ -670,7 +684,7 @@ export default function MarksPage() {
               </tr>
             </thead>
             <tbody>
-              {sortedStudents.map((s, index) => {
+              {visibleStudents.map((s, index) => {
                 const hasScore = typeof marks[s.id] === "number" && !Number.isNaN(marks[s.id]);
                 const score = hasScore ? marks[s.id] : null;
                 return (
@@ -707,10 +721,10 @@ export default function MarksPage() {
                   </tr>
                 );
               })}
-              {!students.length && (
+              {!visibleStudents.length && (
                 <tr>
                   <td colSpan={7} className="muted">
-                    No students in this class yet.
+                    {students.length ? "No student matches that name." : "No students in this class yet."}
                   </td>
                 </tr>
               )}

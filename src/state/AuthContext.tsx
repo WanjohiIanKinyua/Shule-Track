@@ -32,6 +32,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       .finally(() => setLoading(false));
   }, []);
 
+  useEffect(() => {
+    function handleVisibilityChange() {
+      if (document.hidden && getToken()) {
+        clearToken();
+        setTeacher(null);
+      }
+    }
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    return () => document.removeEventListener("visibilitychange", handleVisibilityChange);
+  }, []);
+
   async function login(email: string, password: string) {
     const data = await api("/auth/login", {
       method: "POST",

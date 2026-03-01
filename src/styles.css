@@ -1002,7 +1002,7 @@ td {
   }
   .table-actions {
     display: grid;
-    gap: 8px;
+    gap: 10px;
     min-width: 132px;
   }
   .table-actions .btn {

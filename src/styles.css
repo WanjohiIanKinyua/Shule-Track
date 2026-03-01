@@ -874,6 +874,94 @@ td {
   color: #5e7496;
 }
 
+.teacher-notes-editor-panel {
+  display: grid;
+  gap: 12px;
+}
+
+.teacher-notes-subtext {
+  margin: 4px 0 0;
+}
+
+.teacher-notes-form {
+  display: grid;
+  grid-template-columns: 220px minmax(0, 1fr) 180px;
+  gap: 10px;
+}
+
+.teacher-notes-toolbar {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.teacher-notes-editor {
+  min-height: 220px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 14px;
+  background: #fbfdff;
+  outline: none;
+  line-height: 1.55;
+}
+
+.teacher-notes-editor:empty::before {
+  content: attr(data-placeholder);
+  color: #6f86a8;
+}
+
+.teacher-notes-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+  margin-top: 16px;
+}
+
+.teacher-notes-list {
+  display: grid;
+  gap: 12px;
+}
+
+.teacher-note-card {
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 14px;
+  background: #fbfdff;
+  display: grid;
+  gap: 12px;
+}
+
+.teacher-note-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  align-items: flex-start;
+}
+
+.teacher-note-head h4 {
+  margin: 0 0 4px;
+}
+
+.teacher-note-head p {
+  margin: 0;
+}
+
+.teacher-note-body {
+  color: #183b69;
+  line-height: 1.6;
+}
+
+.teacher-note-body h1,
+.teacher-note-body h2,
+.teacher-note-body h3 {
+  color: #123b7a;
+  margin-top: 0;
+}
+
+.teacher-note-complete {
+  background: #f6fbf7;
+}
+
 @media (max-width: 860px) {
   .app-shell {
     display: block;
@@ -1070,5 +1158,11 @@ td {
   }
   .auth-switch {
     font-size: 0.98rem;
+  }
+  .teacher-notes-form {
+    grid-template-columns: 1fr;
+  }
+  .teacher-notes-grid {
+    grid-template-columns: 1fr;
   }
 }

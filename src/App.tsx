@@ -9,6 +9,7 @@ import AttendanceHistoryPage from "./pages/AttendanceHistoryPage";
 import MarksPage from "./pages/MarksPage";
 import TimetablePage from "./pages/TimetablePage";
 import TimetableHistoryPage from "./pages/TimetableHistoryPage";
+import TeacherNotesPage from "./pages/TeacherNotesPage";
 import ProfilePage from "./pages/ProfilePage";
 import NotFoundPage from "./pages/NotFoundPage";
 
@@ -41,6 +42,7 @@ export default function App() {
         <Route path="marks" element={<MarksPage />} />
         <Route path="timetable" element={<TimetablePage />} />
         <Route path="timetable-history" element={<TimetableHistoryPage />} />
+        <Route path="teacher-notes" element={<TeacherNotesPage />} />
         <Route path="profile" element={<ProfilePage />} />
       </Route>
       <Route path="*" element={<NotFoundPage />} />

@@ -29,6 +29,32 @@ function sortClasses(items: ClassItem[]) {
   });
 }
 
+function formatDateLocal(value: Date | string) {
+  const d = typeof value === "string" ? new Date(value) : value;
+  if (Number.isNaN(d.getTime())) return String(value).slice(0, 10);
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function getWeekBounds(value: string) {
+  const selected = new Date(`${value}T00:00:00`);
+  if (Number.isNaN(selected.getTime())) {
+    return { start: value, end: value };
+  }
+  const day = selected.getDay();
+  const mondayOffset = day === 0 ? -6 : 1 - day;
+  const start = new Date(selected);
+  start.setDate(selected.getDate() + mondayOffset);
+  const end = new Date(start);
+  end.setDate(start.getDate() + 6);
+  return {
+    start: formatDateLocal(start),
+    end: formatDateLocal(end),
+  };
+}
+
 export default function TimetableHistoryPage() {
   const [classes, setClasses] = useState<ClassItem[]>([]);
   const [classId, setClassId] = useState("");
@@ -52,11 +78,20 @@ export default function TimetableHistoryPage() {
     api(`/classes/${classId}/timetable/history`).then((data) => setItems(data || []));
   }, [classId]);
 
+  const selectedWeek = useMemo(() => getWeekBounds(selectedDate), [selectedDate]);
+
+  const visibleItems = useMemo(() => {
+    return items.filter((x) => {
+      const recordedDate = formatDateLocal(x.recorded_at);
+      return recordedDate >= selectedWeek.start && recordedDate <= selectedWeek.end;
+    });
+  }, [items, selectedWeek]);
+
   const summary = useMemo(() => {
-    const attended = items.filter((x) => x.status === "attended").length;
-    const missed = items.filter((x) => x.status === "not_attended").length;
+    const attended = visibleItems.filter((x) => x.status === "attended").length;
+    const missed = visibleItems.filter((x) => x.status === "not_attended").length;
     return { attended, missed };
-  }, [items]);
+  }, [visibleItems]);
 
   function classLabel() {
     const c = classes.find((x) => String(x.id) === String(classId));
@@ -64,9 +99,7 @@ export default function TimetableHistoryPage() {
   }
 
   function dateKey(value: string) {
-    const d = new Date(value);
-    if (Number.isNaN(d.getTime())) return String(value).slice(0, 10);
-    return d.toISOString().slice(0, 10);
+    return formatDateLocal(value);
   }
 
   function dateList(from: string, to: string) {
@@ -224,6 +257,9 @@ export default function TimetableHistoryPage() {
           <span className="tag tag-green">Attended Logs: {summary.attended}</span>
           <span className="tag tag-red">Not Attended Logs: {summary.missed}</span>
         </div>
+        <p className="muted">
+          Showing records for week: {selectedWeek.start} to {selectedWeek.end}.
+        </p>
         {!!message && <p className="muted">{message}</p>}
       </section>
 
@@ -241,7 +277,7 @@ export default function TimetableHistoryPage() {
             </tr>
           </thead>
           <tbody>
-            {items.map((x, i) => (
+            {visibleItems.map((x, i) => (
               <tr key={String(x.id)}>
                 <td>{i + 1}</td>
                 <td>{new Date(x.recorded_at).toLocaleString()}</td>
@@ -260,10 +296,10 @@ export default function TimetableHistoryPage() {
                 <td>{x.reason || "-"}</td>
               </tr>
             ))}
-            {!items.length && (
+            {!visibleItems.length && (
               <tr>
                 <td colSpan={7} className="muted">
-                  No timetable history for this class yet.
+                  No timetable history for the selected week.
                 </td>
               </tr>
             )}

@@ -879,6 +879,128 @@ app.get(
   }),
 );
 
+app.get(
+  "/api/classes/:classId/teacher-notes",
+  auth,
+  asyncHandler(async (req, res) => {
+    const status = String(req.query.status || "all").trim();
+    const filters = ["n.class_id = $1", "n.teacher_id = $2"];
+    const params = [req.params.classId, req.user.id];
+
+    if (status === "active") {
+      filters.push("n.is_completed = false");
+    } else if (status === "history") {
+      filters.push("n.is_completed = true");
+    }
+
+    const rows = await pool.query(
+      `
+      select
+        n.*,
+        c.name as class_name,
+        c.stream as class_stream
+      from teacher_notes n
+      join classes c on c.id = n.class_id
+      where ${filters.join(" and ")}
+      order by
+        case when n.is_completed then 1 else 0 end,
+        coalesce(n.due_date, date '2999-12-31'),
+        n.created_at desc
+      `,
+      params,
+    );
+    res.json(rows.rows);
+  }),
+);
+
+app.post(
+  "/api/classes/:classId/teacher-notes",
+  auth,
+  asyncHandler(async (req, res) => {
+    const classOk = await pool.query("select 1 from classes where id = $1 and teacher_id = $2", [
+      req.params.classId,
+      req.user.id,
+    ]);
+    if (!classOk.rowCount) return res.status(404).json({ error: "Class not found." });
+
+    const title = String(req.body.title || "").trim();
+    const contentHtml = String(req.body.content_html || "").trim();
+    const dueDate = String(req.body.due_date || "").trim() || null;
+
+    if (!title) return res.status(400).json({ error: "Title is required." });
+    if (!contentHtml) return res.status(400).json({ error: "Note content is required." });
+
+    const created = await pool.query(
+      `
+      insert into teacher_notes (teacher_id, class_id, title, content_html, due_date, updated_at)
+      values ($1, $2, $3, $4, $5::date, now())
+      returning *
+      `,
+      [req.user.id, req.params.classId, title, contentHtml, dueDate],
+    );
+    res.json(created.rows[0]);
+  }),
+);
+
+app.put(
+  "/api/teacher-notes/:id",
+  auth,
+  asyncHandler(async (req, res) => {
+    const title = String(req.body.title || "").trim();
+    const contentHtml = String(req.body.content_html || "").trim();
+    const dueDate = String(req.body.due_date || "").trim() || null;
+
+    if (!title) return res.status(400).json({ error: "Title is required." });
+    if (!contentHtml) return res.status(400).json({ error: "Note content is required." });
+
+    const updated = await pool.query(
+      `
+      update teacher_notes
+      set title = $1,
+          content_html = $2,
+          due_date = $3::date,
+          updated_at = now()
+      where id = $4 and teacher_id = $5
+      returning *
+      `,
+      [title, contentHtml, dueDate, req.params.id, req.user.id],
+    );
+    if (!updated.rowCount) return res.status(404).json({ error: "Reminder note not found." });
+    res.json(updated.rows[0]);
+  }),
+);
+
+app.patch(
+  "/api/teacher-notes/:id/status",
+  auth,
+  asyncHandler(async (req, res) => {
+    const completed = Boolean(req.body.completed);
+
+    const updated = await pool.query(
+      `
+      update teacher_notes
+      set is_completed = $1,
+          completed_at = case when $1 then now() else null end,
+          updated_at = now()
+      where id = $2 and teacher_id = $3
+      returning *
+      `,
+      [completed, req.params.id, req.user.id],
+    );
+    if (!updated.rowCount) return res.status(404).json({ error: "Reminder note not found." });
+    res.json(updated.rows[0]);
+  }),
+);
+
+app.delete(
+  "/api/teacher-notes/:id",
+  auth,
+  asyncHandler(async (req, res) => {
+    await pool.query("delete from teacher_notes where id = $1 and teacher_id = $2", [req.params.id, req.user.id]);
+    res.json({ ok: true });
+  }),
+);
+
 app.patch(
   "/api/timetable/:id/compensate",
   auth,

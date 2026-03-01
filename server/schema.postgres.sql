@@ -108,3 +108,16 @@ create table if not exists exam_types (
   created_at timestamptz not null default now(),
   unique (teacher_id, name)
 );
+
+create table if not exists teacher_notes (
+  id uuid primary key default gen_random_uuid(),
+  teacher_id uuid not null references teachers(id) on delete cascade,
+  class_id uuid not null references classes(id) on delete cascade,
+  title text not null,
+  content_html text not null,
+  due_date date,
+  is_completed boolean not null default false,
+  completed_at timestamptz,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);

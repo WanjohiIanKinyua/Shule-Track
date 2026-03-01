@@ -259,6 +259,7 @@ h4 {
 
 .dashboard-cards {
   margin-top: 10px;
+  align-items: start;
 }
 
 .dashboard-card {

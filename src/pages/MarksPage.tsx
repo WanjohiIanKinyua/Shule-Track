@@ -504,6 +504,16 @@ export default function MarksPage() {
             </select>
           </div>
           <div className="inline-form marks-row">
+            <input
+              placeholder="Add exam type (e.g. CAT 2)"
+              value={newExamType}
+              onChange={(e) => setNewExamType(e.target.value)}
+            />
+            <button className="btn btn-outline" type="button" onClick={addExamType}>
+              Add Exam Type
+            </button>
+          </div>
+          <div className="inline-form marks-row">
             <button className="btn" onClick={saveMarks} disabled={!classId || !subjectId || !examType}>
               Save Marks
             </button>
@@ -515,16 +525,6 @@ export default function MarksPage() {
             </button>
             <button className="btn btn-danger" type="button" onClick={deleteExamType} disabled={!examType}>
               Delete Exam Type
-            </button>
-          </div>
-          <div className="inline-form marks-row">
-            <input
-              placeholder="Add exam type (e.g. CAT 2)"
-              value={newExamType}
-              onChange={(e) => setNewExamType(e.target.value)}
-            />
-            <button className="btn btn-outline" type="button" onClick={addExamType}>
-              Add Exam Type
             </button>
           </div>
         </div>

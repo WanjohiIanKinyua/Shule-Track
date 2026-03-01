@@ -40,6 +40,9 @@ export default function TeacherNotesPage() {
   const [classes, setClasses] = useState<ClassItem[]>([]);
   const [classId, setClassId] = useState("");
   const [notes, setNotes] = useState<NoteItem[]>([]);
+  const [exportDate, setExportDate] = useState(new Date().toISOString().slice(0, 10));
+  const [exportFrom, setExportFrom] = useState(new Date().toISOString().slice(0, 10));
+  const [exportTo, setExportTo] = useState(new Date().toISOString().slice(0, 10));
   const [title, setTitle] = useState("");
   const [dueDate, setDueDate] = useState("");
   const [contentHtml, setContentHtml] = useState("");
@@ -189,11 +192,13 @@ export default function TeacherNotesPage() {
     }
   }
 
-  function downloadNotes() {
-    const exportItems = notes;
+  function noteDateKey(note: NoteItem) {
+    return new Date(note.created_at).toISOString().slice(0, 10);
+  }
+
+  function buildExportHtml(exportItems: NoteItem[], heading: string) {
     if (!exportItems.length) {
-      setStatus("No reminder notes to download for this class.");
-      return;
+      return "";
     }
 
     const sections = exportItems
@@ -219,28 +224,63 @@ export default function TeacherNotesPage() {
       })
       .join("");
 
-    const html = `
+    return `
       <!doctype html>
       <html>
         <head>
           <meta charset="utf-8" />
-          <title>${classLabel} Teacher Notes</title>
+          <title>${heading}</title>
         </head>
         <body style="font-family:Segoe UI,Arial,sans-serif;padding:24px;color:#102341;">
-          <h1 style="margin-top:0;">${classLabel} Teacher Reminder Notes</h1>
+          <h1 style="margin-top:0;">${heading}</h1>
           ${sections}
         </body>
       </html>
     `;
+  }
+
+  function triggerDownload(exportItems: NoteItem[], fileLabel: string, heading: string) {
+    if (!exportItems.length) {
+      setStatus("No reminder notes found for the selected date.");
+      return;
+    }
+
+    const html = buildExportHtml(exportItems, heading);
 
     const blob = new Blob([html], { type: "text/html;charset=utf-8" });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = url;
-    link.download = `${classLabel.replace(/\s+/g, "_")}_teacher_notes.html`;
+    link.download = `${classLabel.replace(/\s+/g, "_")}_teacher_notes_${fileLabel}.html`;
     link.click();
     URL.revokeObjectURL(url);
-    setStatus("Reminder notes downloaded.");
+  }
+
+  function downloadDayNotes() {
+    const exportItems = notes.filter((note) => noteDateKey(note) === exportDate);
+    triggerDownload(exportItems, exportDate, `${classLabel} Teacher Reminder Notes (${exportDate})`);
+    if (exportItems.length) {
+      setStatus(`Reminder notes downloaded for ${exportDate}.`);
+    }
+  }
+
+  function downloadRangeNotes() {
+    if (!exportFrom || !exportTo) {
+      setStatus("Select both From and To dates.");
+      return;
+    }
+    if (exportFrom > exportTo) {
+      setStatus("From date must be before or equal to To date.");
+      return;
+    }
+    const exportItems = notes.filter((note) => {
+      const createdDate = noteDateKey(note);
+      return createdDate >= exportFrom && createdDate <= exportTo;
+    });
+    triggerDownload(exportItems, `${exportFrom}_to_${exportTo}`, `${classLabel} Teacher Reminder Notes (${exportFrom} to ${exportTo})`);
+    if (exportItems.length) {
+      setStatus(`Reminder notes downloaded from ${exportFrom} to ${exportTo}.`);
+    }
   }
 
   return (
@@ -254,8 +294,17 @@ export default function TeacherNotesPage() {
             <h3>{editingId ? "Edit Reminder" : "New Reminder"}</h3>
             <p className="muted teacher-notes-subtext">Choose a class, write the note, then save it. Completed notes move to history.</p>
           </div>
-          <button className="btn btn-outline" type="button" onClick={downloadNotes} disabled={!notes.length}>
-            Download Records
+        </div>
+
+        <div className="inline-form">
+          <input type="date" value={exportDate} onChange={(e) => setExportDate(e.target.value)} />
+          <button className="btn btn-outline" type="button" onClick={downloadDayNotes} disabled={!notes.length}>
+            Download Day
+          </button>
+          <input type="date" value={exportFrom} onChange={(e) => setExportFrom(e.target.value)} />
+          <input type="date" value={exportTo} onChange={(e) => setExportTo(e.target.value)} />
+          <button className="btn btn-outline" type="button" onClick={downloadRangeNotes} disabled={!notes.length}>
+            Download Range
           </button>
         </div>
 

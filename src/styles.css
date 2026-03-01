@@ -318,7 +318,7 @@ h4 {
   position: absolute;
   top: calc(100% + 6px);
   left: 0;
-  width: min(760px, calc(100vw - 48px));
+  width: min(900px, calc(100vw - 48px));
   max-width: 100%;
   background: #fff;
   border: 1px solid var(--border);
@@ -326,7 +326,7 @@ h4 {
   box-shadow: 0 8px 18px rgba(16, 35, 65, 0.12);
   padding: 10px;
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 10px 14px;
   z-index: 20;
   overflow-x: hidden;

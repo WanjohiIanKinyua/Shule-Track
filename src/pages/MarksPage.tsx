@@ -531,36 +531,6 @@ export default function MarksPage() {
 
         <div className="panel marks-panel">
           <div className="inline-form marks-row">
-            <details className="subject-dropdown">
-              <summary>Compile Exam Types ({selectedCompileExamTypes.length})</summary>
-              <div className="subject-dropdown-menu">
-                {examTypes.map((ex) => (
-                  <label key={String(ex.id)} className="subject-option">
-                    <input
-                      type="checkbox"
-                      checked={!!compileSelections[ex.name]}
-                      onChange={(e) =>
-                        setCompileSelections((prev) => ({
-                          ...prev,
-                          [ex.name]: e.target.checked,
-                        }))
-                      }
-                    />
-                    {ex.name}
-                  </label>
-                ))}
-              </div>
-            </details>
-            <button
-              className="btn btn-outline"
-              type="button"
-              onClick={downloadCompiledMarksExcel}
-              disabled={!classId || !subjectId || exporting}
-            >
-              {exporting ? "Preparing..." : "Download Compiled Excel"}
-            </button>
-          </div>
-          <div className="inline-form marks-row">
             <input
               placeholder="Type subject name"
               value={newSubjectName}
@@ -646,6 +616,36 @@ export default function MarksPage() {
           </label>
           <button className="btn btn-outline" disabled={savingScale} onClick={saveGradeScale}>
             {savingScale ? "Saving..." : "Save Grade Ranges"}
+          </button>
+        </div>
+        <div className="inline-form marks-row">
+          <details className="subject-dropdown">
+            <summary>Compile Exam Types ({selectedCompileExamTypes.length})</summary>
+            <div className="subject-dropdown-menu">
+              {examTypes.map((ex) => (
+                <label key={String(ex.id)} className="subject-option">
+                  <input
+                    type="checkbox"
+                    checked={!!compileSelections[ex.name]}
+                    onChange={(e) =>
+                      setCompileSelections((prev) => ({
+                        ...prev,
+                        [ex.name]: e.target.checked,
+                      }))
+                    }
+                  />
+                  {ex.name}
+                </label>
+              ))}
+            </div>
+          </details>
+          <button
+            className="btn btn-outline"
+            type="button"
+            onClick={downloadCompiledMarksExcel}
+            disabled={!classId || !subjectId || exporting}
+          >
+            {exporting ? "Preparing..." : "Download Compiled Excel"}
           </button>
         </div>
         {!!statusMessage && <p className="muted">{statusMessage}</p>}

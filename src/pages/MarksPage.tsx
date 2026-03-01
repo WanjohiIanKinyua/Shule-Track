@@ -8,20 +8,6 @@ type Subject = { id: string; name: string };
 type Student = { id: string; full_name: string; admission_number: string };
 type ExamType = { id: string | number; name: string };
 const TERMS = ["Term 1", "Term 2", "Term 3"];
-const DEFAULT_SUBJECTS = [
-  "Mathematics",
-  "English",
-  "Kiswahili",
-  "Biology",
-  "Chemistry",
-  "Physics",
-  "Agriculture",
-  "History",
-  "Geography",
-  "CRE",
-  "Business Studies",
-  "Computer Studies",
-];
 
 type GradeScale = {
   a_min: number;
@@ -39,11 +25,11 @@ export default function MarksPage() {
   const [subjectId, setSubjectId] = useState("");
   const [students, setStudents] = useState<Student[]>([]);
   const [examTypes, setExamTypes] = useState<ExamType[]>([]);
+  const [newSubjectName, setNewSubjectName] = useState("");
   const [examType, setExamType] = useState("");
   const [newExamType, setNewExamType] = useState("");
   const [term, setTerm] = useState("Term 1");
   const [marks, setMarks] = useState<Record<string, number>>({});
-  const [subjectSelections, setSubjectSelections] = useState<Record<string, boolean>>({});
   const [gradeScale, setGradeScale] = useState<GradeScale>({
     a_min: 80,
     b_min: 60,
@@ -62,7 +48,6 @@ export default function MarksPage() {
   const [savingScale, setSavingScale] = useState(false);
   const [statusMessage, setStatusMessage] = useState("");
   const [exporting, setExporting] = useState(false);
-  const selectedSubjectCount = Object.values(subjectSelections).filter(Boolean).length;
   const [compileSelections, setCompileSelections] = useState<Record<string, boolean>>({});
   const selectedCompileExamTypes = examTypes.filter((e) => compileSelections[e.name]).map((e) => e.name);
 
@@ -180,20 +165,25 @@ export default function MarksPage() {
 
   async function addSubject() {
     if (!classId) return;
-    const selected = DEFAULT_SUBJECTS.filter((s) => subjectSelections[s]);
-    if (!selected.length) return;
-    for (const name of selected) {
-      try {
-        await api(`/classes/${classId}/subjects`, {
-          method: "POST",
-          body: JSON.stringify({ name }),
-        });
-      } catch {
-      }
+    const name = newSubjectName.trim();
+    if (!name) {
+      setStatusMessage("Type a subject name first.");
+      return;
     }
-    const data = await api(`/classes/${classId}/subjects`);
-    setSubjects(data);
-    setSubjectSelections({});
+    try {
+      await api(`/classes/${classId}/subjects`, {
+        method: "POST",
+        body: JSON.stringify({ name }),
+      });
+      const data = await api(`/classes/${classId}/subjects`);
+      setSubjects(data);
+      const added = data.find((item: Subject) => item.name.toLowerCase() === name.toLowerCase());
+      if (added) setSubjectId(added.id);
+      setNewSubjectName("");
+      setStatusMessage("Subject added.");
+    } catch (e: any) {
+      setStatusMessage(e.message || "Could not add subject.");
+    }
   }
 
   async function saveMarks() {
@@ -564,28 +554,13 @@ export default function MarksPage() {
             </button>
           </div>
           <div className="inline-form marks-row">
-            <details className="subject-dropdown">
-              <summary>Select Subjects ({selectedSubjectCount})</summary>
-              <div className="subject-dropdown-menu">
-                {DEFAULT_SUBJECTS.map((s) => (
-                  <label key={s} className="subject-option">
-                    <input
-                      type="checkbox"
-                      checked={!!subjectSelections[s]}
-                      onChange={(e) =>
-                        setSubjectSelections((prev) => ({
-                          ...prev,
-                          [s]: e.target.checked,
-                        }))
-                      }
-                    />
-                    {s}
-                  </label>
-                ))}
-              </div>
-            </details>
+            <input
+              placeholder="Type subject name"
+              value={newSubjectName}
+              onChange={(e) => setNewSubjectName(e.target.value)}
+            />
             <button className="btn btn-outline" onClick={addSubject} disabled={!classId}>
-              Add Selected Subjects
+              Add Subject
             </button>
           </div>
           <div className="inline-form marks-row marks-grade-row">

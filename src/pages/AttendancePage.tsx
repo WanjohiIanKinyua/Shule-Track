@@ -18,6 +18,7 @@ export default function AttendancePage() {
   const [reasonStudent, setReasonStudent] = useState<Student | null>(null);
   const [reasonDraft, setReasonDraft] = useState("");
   const [message, setMessage] = useState("");
+  const [lockedNoticeOpen, setLockedNoticeOpen] = useState(false);
 
   const today = new Date().toISOString().slice(0, 10);
   const isPastDate = date < today;
@@ -63,7 +64,7 @@ export default function AttendancePage() {
     if (!classId) return;
     if (isPastDate) {
       setMessage("Previous attendance records are view-only.");
-      window.alert("You cannot edit attendance for a previous day.");
+      setLockedNoticeOpen(true);
       return;
     }
     const records = Object.entries(attendance).map(([student_id, status]) => ({
@@ -99,8 +100,26 @@ export default function AttendancePage() {
     closeAbsentReason();
   }
 
+  function openLockedNotice() {
+    setMessage("Previous attendance records are view-only.");
+    setLockedNoticeOpen(true);
+  }
+
   return (
     <div>
+      {lockedNoticeOpen && (
+        <div className="modal-backdrop" role="dialog" aria-modal="true">
+          <div className="modal-card">
+            <h3>Attendance Locked</h3>
+            <p className="muted">You cannot edit attendance for a previous day.</p>
+            <div className="inline-form">
+              <button className="btn" type="button" onClick={() => setLockedNoticeOpen(false)}>
+                OK
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       {reasonStudent && (
         <div className="modal-backdrop" role="dialog" aria-modal="true">
           <div className="modal-card">
@@ -180,8 +199,7 @@ export default function AttendancePage() {
                     className={attendance[s.id] === "present" ? "btn btn-green" : "btn btn-danger"}
                     onClick={() => {
                       if (isPastDate) {
-                        setMessage("Previous attendance records are view-only.");
-                        window.alert("You cannot edit attendance for a previous day.");
+                        openLockedNotice();
                         return;
                       }
                       if (attendance[s.id] === "present") {

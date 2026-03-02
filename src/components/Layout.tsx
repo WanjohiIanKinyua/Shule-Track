@@ -1,6 +1,7 @@
 import { NavLink, Outlet, useLocation } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { useAuth } from "../state/AuthContext";
+import { successEventName } from "../lib/notify";
 
 const links = [
   { to: "/dashboard", label: "Dashboard", icon: "grid" },
@@ -89,6 +90,7 @@ export default function Layout() {
     typeof window !== "undefined" ? window.innerWidth <= 860 : false,
   );
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [successMessage, setSuccessMessage] = useState("");
 
   useEffect(() => {
     const onResize = () => {
@@ -105,8 +107,31 @@ export default function Layout() {
     if (isMobile) setMobileOpen(false);
   }, [location.pathname, isMobile]);
 
+  useEffect(() => {
+    function handleSuccess(event: Event) {
+      const customEvent = event as CustomEvent<string>;
+      setSuccessMessage(customEvent.detail || "Action completed successfully.");
+    }
+
+    window.addEventListener(successEventName(), handleSuccess as EventListener);
+    return () => window.removeEventListener(successEventName(), handleSuccess as EventListener);
+  }, []);
+
   return (
     <div className="app-shell">
+      {!!successMessage && (
+        <div className="modal-backdrop" role="dialog" aria-modal="true">
+          <div className="modal-card">
+            <h3>Success</h3>
+            <p className="muted">{successMessage}</p>
+            <div className="inline-form">
+              <button className="btn" type="button" onClick={() => setSuccessMessage("")}>
+                OK
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       {isMobile && mobileOpen && <button className="sidebar-overlay" onClick={() => setMobileOpen(false)} aria-label="Close menu" />}
       <aside className={`sidebar ${isMobile ? "sidebar-mobile" : ""} ${mobileOpen ? "open" : ""}`}>
         <div className="sidebar-top">

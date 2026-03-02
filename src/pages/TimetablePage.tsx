@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { api } from "../lib/api";
 import * as XLSX from "xlsx-js-style";
+import { showSuccess } from "../lib/notify";
 
 type ClassItem = { id: string; name: string; stream: string | null };
 type Subject = { id: string; name: string };
@@ -158,7 +159,7 @@ export default function TimetablePage() {
       await loadClassData(classId);
       setPageMessage("Lesson added. Keep adding lessons for Monday to Friday to build the whole week.");
       setImportStatus("");
-      openNotice("Lesson added successfully.");
+      showSuccess("Lesson added successfully.");
     } catch (e: any) {
       openNotice(e.message || "Could not add lesson.");
     } finally {
@@ -183,6 +184,7 @@ export default function TimetablePage() {
         body: JSON.stringify({ attended: true, reason: "" }),
       });
       await loadClassData(classId);
+      showSuccess("Lesson marked as attended.");
     } catch (e: any) {
       openNotice(e.message || "Could not update lesson.");
     }
@@ -195,6 +197,7 @@ export default function TimetablePage() {
     }
     await api(`/timetable/${id}`, { method: "DELETE" });
     await loadClassData(classId);
+    showSuccess("Lesson deleted successfully.");
   }
 
   function openEditModal(lesson: Lesson) {
@@ -254,6 +257,7 @@ export default function TimetablePage() {
       });
       await loadClassData(classId);
       closeReasonModal();
+      showSuccess("Reason saved successfully.");
     } catch (e: any) {
       openNotice(e.message || "Could not save reason.");
     } finally {
@@ -283,6 +287,7 @@ export default function TimetablePage() {
       });
       await loadClassData(classId);
       closeCompensationModal();
+      showSuccess("Compensation slot saved successfully.");
     } catch (e: any) {
       openNotice(e.message || "Could not save compensation slot.");
     } finally {
@@ -363,6 +368,7 @@ export default function TimetablePage() {
 
       await loadClassData(classId);
       setImportStatus(`Import complete. Added ${added} lessons, skipped ${skipped}.`);
+      if (added > 0) showSuccess(`Timetable import completed. Added ${added} lesson${added === 1 ? "" : "s"}.`);
     } catch (e: any) {
       setImportStatus(e.message || "Failed to import timetable.");
     } finally {
@@ -399,6 +405,7 @@ export default function TimetablePage() {
       await loadClassData(classId);
       setPageMessage("Lesson updated.");
       closeEditModal();
+      showSuccess("Lesson updated successfully.");
     } catch (e: any) {
       openNotice(e.message || "Could not update lesson.");
     } finally {
@@ -416,6 +423,7 @@ export default function TimetablePage() {
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Timetable");
     XLSX.writeFile(wb, "timetable_import_template.xlsx");
+    showSuccess("Timetable template downloaded successfully.");
   }
 
   const selectedClassLabel = useMemo(() => {

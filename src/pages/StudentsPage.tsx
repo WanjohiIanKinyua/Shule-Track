@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { api } from "../lib/api";
 import * as XLSX from "xlsx-js-style";
+import { showSuccess } from "../lib/notify";
 
 type ClassItem = { id: string; name: string; stream: string | null };
 type Student = { id: string; admission_number: string; full_name: string; gender: string };
@@ -48,11 +49,13 @@ export default function StudentsPage() {
     setAdm("");
     const data = await api(`/classes/${classId}/students`);
     setStudents(data);
+    showSuccess("Student added successfully.");
   }
 
   async function remove(id: string) {
     await api(`/students/${id}`, { method: "DELETE" });
     setStudents((prev) => prev.filter((s) => s.id !== id));
+    showSuccess("Student removed successfully.");
   }
 
   function startEdit(student: Student) {
@@ -82,6 +85,7 @@ export default function StudentsPage() {
       });
       setStudents((prev) => prev.map((s) => (s.id === studentId ? updated : s)));
       cancelEdit();
+      showSuccess("Student details saved successfully.");
     } catch (e: any) {
       setError(e.message || "Failed to update student.");
     }
@@ -151,6 +155,7 @@ export default function StudentsPage() {
       const data = await api(`/classes/${classId}/students`);
       setStudents(data);
       setImportStatus(`Import complete. Added ${success} students, skipped ${skipped}.`);
+      if (success > 0) showSuccess(`Student import completed. Added ${success} student${success === 1 ? "" : "s"}.`);
     } catch (e: any) {
       setError(e.message || "Failed to import file.");
     } finally {
@@ -174,6 +179,7 @@ export default function StudentsPage() {
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Students");
     XLSX.writeFile(wb, "students_import_template.xlsx");
+    showSuccess("Student template downloaded successfully.");
   }
 
   return (

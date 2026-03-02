@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { api } from "../lib/api";
 import * as XLSX from "xlsx-js-style";
+import { showSuccess } from "../lib/notify";
 
 type ClassItem = { id: string; name: string; stream: string | null };
 type Student = { id: string; full_name: string; admission_number: string; gender: string };
@@ -117,6 +118,7 @@ export default function AttendanceHistoryPage() {
       XLSX.utils.book_append_sheet(wb, ws, date);
       XLSX.writeFile(wb, `${getClassLabel()}_attendance_${date}.xlsx`);
       setMessage(`Downloaded attendance sheet for ${date}.`);
+      showSuccess(`Attendance workbook downloaded for ${date}.`);
     } finally {
       setExporting(false);
     }
@@ -164,6 +166,7 @@ export default function AttendanceHistoryPage() {
 
       XLSX.writeFile(wb, `${getClassLabel()}_attendance_${days[0]}_to_${days[days.length - 1]}.xlsx`);
       setMessage("Downloaded workbook with separate daily sheets for selected range.");
+      showSuccess("Attendance range workbook downloaded successfully.");
     } finally {
       setExporting(false);
     }

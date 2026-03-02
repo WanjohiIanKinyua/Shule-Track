@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { api } from "../lib/api";
 import { average } from "../lib/grades";
 import * as XLSX from "xlsx-js-style";
+import { showSuccess } from "../lib/notify";
 
 type ClassItem = { id: string; name: string; stream: string | null };
 type Subject = { id: string; name: string };
@@ -183,6 +184,7 @@ export default function MarksPage() {
     setExamTypes(list || []);
     setExamType(value);
     setNewExamType("");
+    showSuccess("Exam type added successfully.");
   }
 
   async function deleteExamType() {
@@ -194,6 +196,7 @@ export default function MarksPage() {
       setExamTypes(next);
       setExamType(next[0]?.name || "");
       setStatusMessage("Exam type deleted.");
+      showSuccess("Exam type deleted successfully.");
     } catch (e: any) {
       setStatusMessage(e.message || "Could not delete exam type.");
     }
@@ -217,6 +220,7 @@ export default function MarksPage() {
       if (added) setSubjectId(added.id);
       setNewSubjectName("");
       setStatusMessage("Subject added.");
+      showSuccess("Subject added successfully.");
     } catch (e: any) {
       setStatusMessage(e.message || "Could not add subject.");
     }
@@ -232,6 +236,7 @@ export default function MarksPage() {
       body: JSON.stringify({ subject_id: subjectId, exam_type: examType, term, records }),
     });
     setStatusMessage("Marks saved.");
+    showSuccess("Marks saved successfully.");
   }
 
   async function removeSubject() {
@@ -241,6 +246,7 @@ export default function MarksPage() {
     setSubjects(data);
     setSubjectId(data.length ? data[0].id : "");
     setStatusMessage("Subject deleted.");
+    showSuccess("Subject deleted successfully.");
   }
 
   async function saveGradeScale() {
@@ -271,6 +277,7 @@ export default function MarksPage() {
         Object.fromEntries(GRADE_FIELDS.map((field) => [field.key, String(saved[field.key])])) as Record<GradeKey, string>,
       );
       setStatusMessage("Grade ranges saved.");
+      showSuccess("Grade ranges saved successfully.");
     } catch (e: any) {
       setStatusMessage(e.message || "Could not save grade ranges.");
     } finally {
@@ -366,6 +373,7 @@ export default function MarksPage() {
         `${classLabel()}_marks_${examType.replace(/\s+/g, "_")}_${term.replace(/\s+/g, "_")}.xlsx`,
       );
       setStatusMessage("Marks export downloaded.");
+      showSuccess("Marks workbook downloaded successfully.");
     } catch (e: any) {
       setStatusMessage(e.message || "Failed to export marks.");
     } finally {
@@ -468,6 +476,7 @@ export default function MarksPage() {
         `${classLabel()}_compiled_${selectedCompileExamTypes.join("_").replace(/\s+/g, "_")}_${term.replace(/\s+/g, "_")}.xlsx`,
       );
       setStatusMessage("Compiled marks export downloaded.");
+      showSuccess("Compiled marks workbook downloaded successfully.");
     } catch (e: any) {
       setStatusMessage(e.message || "Failed to compile/export marks.");
     } finally {

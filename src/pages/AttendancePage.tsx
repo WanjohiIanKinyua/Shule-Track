@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { api } from "../lib/api";
 import { useParams } from "react-router-dom";
+import { showSuccess } from "../lib/notify";
 
 type ClassItem = { id: string; name: string; stream: string | null };
 type Student = { id: string; full_name: string; admission_number: string; gender: string };
@@ -84,7 +85,7 @@ export default function AttendancePage() {
       body: JSON.stringify({ date, records }),
     });
     setMessage("");
-    alert("Attendance saved.");
+    showSuccess("Attendance saved successfully.");
   }
 
   function openAbsentReason(student: Student) {

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { api } from "../lib/api";
 import * as XLSX from "xlsx-js-style";
+import { showSuccess } from "../lib/notify";
 
 type ClassItem = { id: string; name: string; stream: string | null };
 type HistoryItem = {
@@ -178,6 +179,7 @@ export default function TimetableHistoryPage() {
       XLSX.utils.book_append_sheet(wb, ws, targetDate);
       XLSX.writeFile(wb, `${classLabel()}_timetable_history_${targetDate}.xlsx`);
       setMessage(`Downloaded day workbook for ${targetDate}.`);
+      showSuccess(`Timetable history workbook downloaded for ${targetDate}.`);
     } finally {
       setExporting(false);
     }
@@ -226,6 +228,7 @@ export default function TimetableHistoryPage() {
       }
       XLSX.writeFile(wb, `${classLabel()}_timetable_history_${dateFrom}_to_${dateTo}.xlsx`);
       setMessage("Downloaded range workbook.");
+      showSuccess("Timetable history range workbook downloaded successfully.");
     } finally {
       setExporting(false);
     }

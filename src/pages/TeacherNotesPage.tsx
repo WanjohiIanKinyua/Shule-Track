@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { api } from "../lib/api";
+import { showSuccess } from "../lib/notify";
 
 type ClassItem = { id: string; name: string; stream: string | null };
 type NoteItem = {
@@ -139,12 +140,14 @@ export default function TeacherNotesPage() {
           body: JSON.stringify(payload),
         });
         setStatus("Reminder note updated.");
+        showSuccess("Reminder note updated successfully.");
       } else {
         await api(`/classes/${classId}/teacher-notes`, {
           method: "POST",
           body: JSON.stringify(payload),
         });
         setStatus("Reminder note saved.");
+        showSuccess("Reminder note saved successfully.");
       }
 
       await reloadNotes();
@@ -174,6 +177,7 @@ export default function TeacherNotesPage() {
       });
       await reloadNotes();
       setStatus(completed ? "Reminder marked as complete." : "Reminder reopened.");
+      showSuccess(completed ? "Reminder marked as complete." : "Reminder reopened successfully.");
       if (editingId === noteId && completed) resetForm();
     } catch (error: any) {
       setStatus(error.message || "Failed to update reminder.");
@@ -186,6 +190,7 @@ export default function TeacherNotesPage() {
       await api(`/teacher-notes/${noteId}`, { method: "DELETE" });
       await reloadNotes();
       setStatus("Reminder deleted.");
+      showSuccess("Reminder deleted successfully.");
       if (editingId === noteId) resetForm();
     } catch (error: any) {
       setStatus(error.message || "Failed to delete reminder.");
@@ -254,6 +259,7 @@ export default function TeacherNotesPage() {
     link.download = `${classLabel.replace(/\s+/g, "_")}_teacher_notes_${fileLabel}.html`;
     link.click();
     URL.revokeObjectURL(url);
+    showSuccess("Reminder notes downloaded successfully.");
   }
 
   function downloadDayNotes() {

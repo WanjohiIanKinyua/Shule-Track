@@ -8,12 +8,34 @@ type Subject = { id: string; name: string };
 type Student = { id: string; full_name: string; admission_number: string };
 type ExamType = { id: string | number; name: string };
 const TERMS = ["Term 1", "Term 2", "Term 3"];
+const GRADE_FIELDS = [
+  { key: "a_min", label: "A", defaultValue: "80" },
+  { key: "a_minus_min", label: "A-", defaultValue: "75" },
+  { key: "b_plus_min", label: "B+", defaultValue: "70" },
+  { key: "b_min", label: "B", defaultValue: "65" },
+  { key: "b_minus_min", label: "B-", defaultValue: "60" },
+  { key: "c_plus_min", label: "C+", defaultValue: "55" },
+  { key: "c_min", label: "C", defaultValue: "50" },
+  { key: "c_minus_min", label: "C-", defaultValue: "45" },
+  { key: "d_plus_min", label: "D+", defaultValue: "40" },
+  { key: "d_min", label: "D", defaultValue: "35" },
+  { key: "d_minus_min", label: "D-", defaultValue: "30" },
+  { key: "e_min", label: "E", defaultValue: "0" },
+] as const;
+type GradeKey = (typeof GRADE_FIELDS)[number]["key"];
 
 type GradeScale = {
   a_min: number;
+  a_minus_min: number;
+  b_plus_min: number;
   b_min: number;
+  b_minus_min: number;
+  c_plus_min: number;
   c_min: number;
+  c_minus_min: number;
+  d_plus_min: number;
   d_min: number;
+  d_minus_min: number;
   e_min: number;
   average_multiplier: number;
 };
@@ -33,19 +55,22 @@ export default function MarksPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [gradeScale, setGradeScale] = useState<GradeScale>({
     a_min: 80,
-    b_min: 60,
-    c_min: 40,
-    d_min: 30,
+    a_minus_min: 75,
+    b_plus_min: 70,
+    b_min: 65,
+    b_minus_min: 60,
+    c_plus_min: 55,
+    c_min: 50,
+    c_minus_min: 45,
+    d_plus_min: 40,
+    d_min: 35,
+    d_minus_min: 30,
     e_min: 0,
     average_multiplier: 1,
   });
-  const [gradeInputs, setGradeInputs] = useState<Record<"a_min" | "b_min" | "c_min" | "d_min" | "e_min", string>>({
-    a_min: "80",
-    b_min: "60",
-    c_min: "40",
-    d_min: "30",
-    e_min: "0",
-  });
+  const [gradeInputs, setGradeInputs] = useState<Record<GradeKey, string>>(
+    Object.fromEntries(GRADE_FIELDS.map((field) => [field.key, field.defaultValue])) as Record<GradeKey, string>,
+  );
   const [savingScale, setSavingScale] = useState(false);
   const [statusMessage, setStatusMessage] = useState("");
   const [exporting, setExporting] = useState(false);
@@ -54,9 +79,16 @@ export default function MarksPage() {
 
   function getGrade(score: number) {
     if (score >= gradeScale.a_min) return "A";
+    if (score >= gradeScale.a_minus_min) return "A-";
+    if (score >= gradeScale.b_plus_min) return "B+";
     if (score >= gradeScale.b_min) return "B";
+    if (score >= gradeScale.b_minus_min) return "B-";
+    if (score >= gradeScale.c_plus_min) return "C+";
     if (score >= gradeScale.c_min) return "C";
+    if (score >= gradeScale.c_minus_min) return "C-";
+    if (score >= gradeScale.d_plus_min) return "D+";
     if (score >= gradeScale.d_min) return "D";
+    if (score >= gradeScale.d_minus_min) return "D-";
     if (score >= gradeScale.e_min) return "E";
     return "E";
   }
@@ -73,20 +105,23 @@ export default function MarksPage() {
     api("/grade-settings").then((data) => {
       const next = {
         a_min: Number(data.a_min ?? 80),
-        b_min: Number(data.b_min ?? 60),
-        c_min: Number(data.c_min ?? 40),
-        d_min: Number(data.d_min ?? 30),
+        a_minus_min: Number(data.a_minus_min ?? 75),
+        b_plus_min: Number(data.b_plus_min ?? 70),
+        b_min: Number(data.b_min ?? 65),
+        b_minus_min: Number(data.b_minus_min ?? 60),
+        c_plus_min: Number(data.c_plus_min ?? 55),
+        c_min: Number(data.c_min ?? 50),
+        c_minus_min: Number(data.c_minus_min ?? 45),
+        d_plus_min: Number(data.d_plus_min ?? 40),
+        d_min: Number(data.d_min ?? 35),
+        d_minus_min: Number(data.d_minus_min ?? 30),
         e_min: Number(data.e_min ?? 0),
         average_multiplier: Number(data.average_multiplier ?? 1),
       };
       setGradeScale(next);
-      setGradeInputs({
-        a_min: String(next.a_min),
-        b_min: String(next.b_min),
-        c_min: String(next.c_min),
-        d_min: String(next.d_min),
-        e_min: String(next.e_min),
-      });
+      setGradeInputs(
+        Object.fromEntries(GRADE_FIELDS.map((field) => [field.key, String(next[field.key])])) as Record<GradeKey, string>,
+      );
     });
     api("/exam-types").then((data) => {
       const list = (data || []) as ExamType[];
@@ -95,13 +130,13 @@ export default function MarksPage() {
     });
   }, []);
 
-  function onGradeInputChange(field: "a_min" | "b_min" | "c_min" | "d_min" | "e_min", value: string) {
+  function onGradeInputChange(field: GradeKey, value: string) {
     if (/^\d*\.?\d*$/.test(value)) {
       setGradeInputs((prev) => ({ ...prev, [field]: value }));
     }
   }
 
-  function onGradeInputBlur(field: "a_min" | "b_min" | "c_min" | "d_min" | "e_min") {
+  function onGradeInputBlur(field: GradeKey) {
     setGradeInputs((prev) => ({
       ...prev,
       [field]: prev[field].trim() === "" ? "0" : prev[field],
@@ -214,9 +249,16 @@ export default function MarksPage() {
     try {
       const payload: GradeScale = {
         a_min: Number(gradeInputs.a_min || "0"),
+        a_minus_min: Number(gradeInputs.a_minus_min || "0"),
+        b_plus_min: Number(gradeInputs.b_plus_min || "0"),
         b_min: Number(gradeInputs.b_min || "0"),
+        b_minus_min: Number(gradeInputs.b_minus_min || "0"),
+        c_plus_min: Number(gradeInputs.c_plus_min || "0"),
         c_min: Number(gradeInputs.c_min || "0"),
+        c_minus_min: Number(gradeInputs.c_minus_min || "0"),
+        d_plus_min: Number(gradeInputs.d_plus_min || "0"),
         d_min: Number(gradeInputs.d_min || "0"),
+        d_minus_min: Number(gradeInputs.d_minus_min || "0"),
         e_min: Number(gradeInputs.e_min || "0"),
         average_multiplier: Number(gradeScale.average_multiplier || 1),
       };
@@ -225,13 +267,9 @@ export default function MarksPage() {
         body: JSON.stringify(payload),
       });
       setGradeScale(saved);
-      setGradeInputs({
-        a_min: String(saved.a_min),
-        b_min: String(saved.b_min),
-        c_min: String(saved.c_min),
-        d_min: String(saved.d_min),
-        e_min: String(saved.e_min),
-      });
+      setGradeInputs(
+        Object.fromEntries(GRADE_FIELDS.map((field) => [field.key, String(saved[field.key])])) as Record<GradeKey, string>,
+      );
       setStatusMessage("Grade ranges saved.");
     } catch (e: any) {
       setStatusMessage(e.message || "Could not save grade ranges.");
@@ -541,83 +579,37 @@ export default function MarksPage() {
             </button>
           </div>
           <div className="inline-form marks-row marks-grade-row">
-          <strong>Grade Ranges:</strong>
-          <label className="marks-grade-item">
-            A:
-            <input
-              type="number"
-              min={0}
-              max={100}
-              value={gradeInputs.a_min}
-              onFocus={(e) => e.currentTarget.select()}
-              onChange={(e) => onGradeInputChange("a_min", e.target.value)}
-              onBlur={() => onGradeInputBlur("a_min")}
-            />
-          </label>
-          <label className="marks-grade-item">
-            B:
-            <input
-              type="number"
-              min={0}
-              max={100}
-              value={gradeInputs.b_min}
-              onFocus={(e) => e.currentTarget.select()}
-              onChange={(e) => onGradeInputChange("b_min", e.target.value)}
-              onBlur={() => onGradeInputBlur("b_min")}
-            />
-          </label>
-          <label className="marks-grade-item">
-            C:
-            <input
-              type="number"
-              min={0}
-              max={100}
-              value={gradeInputs.c_min}
-              onFocus={(e) => e.currentTarget.select()}
-              onChange={(e) => onGradeInputChange("c_min", e.target.value)}
-              onBlur={() => onGradeInputBlur("c_min")}
-            />
-          </label>
-          <label className="marks-grade-item">
-            D:
-            <input
-              type="number"
-              min={0}
-              max={100}
-              value={gradeInputs.d_min}
-              onFocus={(e) => e.currentTarget.select()}
-              onChange={(e) => onGradeInputChange("d_min", e.target.value)}
-              onBlur={() => onGradeInputBlur("d_min")}
-            />
-          </label>
-          <label className="marks-grade-item">
-            E:
-            <input
-              type="number"
-              min={0}
-              max={100}
-              value={gradeInputs.e_min}
-              onFocus={(e) => e.currentTarget.select()}
-              onChange={(e) => onGradeInputChange("e_min", e.target.value)}
-              onBlur={() => onGradeInputBlur("e_min")}
-            />
-          </label>
-          <label className="marks-grade-item marks-grade-mode">
-            Average Mode:
-            <select
-              value={String(gradeScale.average_multiplier)}
-              onChange={(e) =>
-                setGradeScale((g) => ({ ...g, average_multiplier: Number(e.target.value) || 1 }))
-              }
-            >
-              <option value="1">As Is (x1)</option>
-              <option value="2">Multiply by 2 (x2)</option>
-            </select>
-          </label>
-          <button className="btn btn-outline" disabled={savingScale} onClick={saveGradeScale}>
-            {savingScale ? "Saving..." : "Save Grade Ranges"}
-          </button>
-        </div>
+            <strong>Grade Ranges:</strong>
+            {GRADE_FIELDS.map((field) => (
+              <label key={field.key} className="marks-grade-item">
+                {field.label}:
+                <input
+                  type="number"
+                  min={0}
+                  max={100}
+                  value={gradeInputs[field.key]}
+                  onFocus={(e) => e.currentTarget.select()}
+                  onChange={(e) => onGradeInputChange(field.key, e.target.value)}
+                  onBlur={() => onGradeInputBlur(field.key)}
+                />
+              </label>
+            ))}
+            <label className="marks-grade-item marks-grade-mode">
+              Average Mode:
+              <select
+                value={String(gradeScale.average_multiplier)}
+                onChange={(e) =>
+                  setGradeScale((g) => ({ ...g, average_multiplier: Number(e.target.value) || 1 }))
+                }
+              >
+                <option value="1">As Is (x1)</option>
+                <option value="2">Multiply by 2 (x2)</option>
+              </select>
+            </label>
+            <button className="btn btn-outline" disabled={savingScale} onClick={saveGradeScale}>
+              {savingScale ? "Saving..." : "Save Grade Ranges"}
+            </button>
+          </div>
         <div className="inline-form marks-row">
           <details className="subject-dropdown">
             <summary>Compile Exam Types ({selectedCompileExamTypes.length})</summary>

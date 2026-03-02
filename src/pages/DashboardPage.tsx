@@ -13,9 +13,11 @@ type Summary = {
   class_average: number;
   class_grade: string;
   attendance_rate: number;
-  grade_breakdown: { A: number; B: number; C: number; D: number; E: number };
+  grade_breakdown: Record<string, number>;
   trends: { week_start: string; attendance_rate: number }[];
 };
+
+const GRADE_ORDER = ["A", "A-", "B+", "B", "B-", "C+", "C", "C-", "D+", "D", "D-", "E"];
 
 export default function DashboardPage() {
   const [classes, setClasses] = useState<ClassItem[]>([]);
@@ -158,9 +160,9 @@ export default function DashboardPage() {
                     <div className="dashboard-graphs">
                       <div className="dashboard-graph">
                         <h4>Grade Distribution</h4>
-                        {(["A", "B", "C", "D", "E"] as const).map((grade) => {
+                        {GRADE_ORDER.map((grade) => {
                           const total = Object.values(summary.grade_breakdown).reduce((a, b) => a + b, 0);
-                          const value = summary.grade_breakdown[grade];
+                          const value = summary.grade_breakdown[grade] || 0;
                           const percent = total ? (value / total) * 100 : 0;
                           return (
                             <div key={grade} className="graph-row">

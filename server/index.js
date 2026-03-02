@@ -26,11 +26,50 @@ if (!DATABASE_URL) {
 const pool = new Pool({ connectionString: DATABASE_URL });
 
 const DEFAULT_EXAM_TYPES = ["Opener", "CAT", "Mid-Term", "End-Term"];
+const GRADE_BANDS = [
+  ["A", "a_min"],
+  ["A-", "a_minus_min"],
+  ["B+", "b_plus_min"],
+  ["B", "b_min"],
+  ["B-", "b_minus_min"],
+  ["C+", "c_plus_min"],
+  ["C", "c_min"],
+  ["C-", "c_minus_min"],
+  ["D+", "d_plus_min"],
+  ["D", "d_min"],
+  ["D-", "d_minus_min"],
+  ["E", "e_min"],
+];
+const GRADE_SETTINGS_SELECT = `
+  select
+    a_min::float as a_min,
+    a_minus_min::float as a_minus_min,
+    b_plus_min::float as b_plus_min,
+    b_min::float as b_min,
+    b_minus_min::float as b_minus_min,
+    c_plus_min::float as c_plus_min,
+    c_min::float as c_min,
+    c_minus_min::float as c_minus_min,
+    d_plus_min::float as d_plus_min,
+    d_min::float as d_min,
+    d_minus_min::float as d_minus_min,
+    e_min::float as e_min,
+    average_multiplier::float as average_multiplier
+  from grade_settings
+  where teacher_id = $1
+`;
 const DEFAULT_GRADE_SCALE = {
   a_min: 80,
-  b_min: 60,
-  c_min: 40,
-  d_min: 30,
+  a_minus_min: 75,
+  b_plus_min: 70,
+  b_min: 65,
+  b_minus_min: 60,
+  c_plus_min: 55,
+  c_min: 50,
+  c_minus_min: 45,
+  d_plus_min: 40,
+  d_min: 35,
+  d_minus_min: 30,
   e_min: 0,
   average_multiplier: 1,
 };
@@ -53,18 +92,28 @@ function isStrongPassword(password) {
 }
 
 function gradeFromScale(avg, scale) {
-  if (avg >= scale.a_min) return "A";
-  if (avg >= scale.b_min) return "B";
-  if (avg >= scale.c_min) return "C";
-  if (avg >= scale.d_min) return "D";
+  for (const [label, key] of GRADE_BANDS) {
+    if (avg >= scale[key]) return label;
+  }
   if (avg >= scale.e_min) return "E";
   return "E";
+}
+
+function emptyGradeBreakdown() {
+  return Object.fromEntries(GRADE_BANDS.map(([label]) => [label, 0]));
 }
 
 async function ensureSchema() {
   const schemaSql = fs.readFileSync(path.join(__dirname, "schema.postgres.sql"), "utf8");
   await pool.query(schemaSql);
   await pool.query("alter table if exists attendance add column if not exists reason text");
+  await pool.query("alter table if exists grade_settings add column if not exists a_minus_min numeric(5,2) not null default 75");
+  await pool.query("alter table if exists grade_settings add column if not exists b_plus_min numeric(5,2) not null default 70");
+  await pool.query("alter table if exists grade_settings add column if not exists b_minus_min numeric(5,2) not null default 60");
+  await pool.query("alter table if exists grade_settings add column if not exists c_plus_min numeric(5,2) not null default 55");
+  await pool.query("alter table if exists grade_settings add column if not exists c_minus_min numeric(5,2) not null default 45");
+  await pool.query("alter table if exists grade_settings add column if not exists d_plus_min numeric(5,2) not null default 40");
+  await pool.query("alter table if exists grade_settings add column if not exists d_minus_min numeric(5,2) not null default 30");
   await pool.query("alter table if exists timetable_lessons drop constraint if exists timetable_lessons_day_of_week_check");
   await pool.query(`
     alter table timetable_lessons
@@ -568,10 +617,7 @@ app.get(
   "/api/grade-settings",
   auth,
   asyncHandler(async (req, res) => {
-    const rows = await pool.query(
-      "select a_min::float as a_min, b_min::float as b_min, c_min::float as c_min, d_min::float as d_min, e_min::float as e_min, average_multiplier::float as average_multiplier from grade_settings where teacher_id = $1",
-      [req.user.id],
-    );
+    const rows = await pool.query(GRADE_SETTINGS_SELECT, [req.user.id]);
     res.json(rows.rows[0] || DEFAULT_GRADE_SCALE);
   }),
 );
@@ -581,14 +627,36 @@ app.put(
   auth,
   asyncHandler(async (req, res) => {
     const a_min = toNumber(req.body.a_min, 0);
+    const a_minus_min = toNumber(req.body.a_minus_min, 0);
+    const b_plus_min = toNumber(req.body.b_plus_min, 0);
     const b_min = toNumber(req.body.b_min, 0);
+    const b_minus_min = toNumber(req.body.b_minus_min, 0);
+    const c_plus_min = toNumber(req.body.c_plus_min, 0);
     const c_min = toNumber(req.body.c_min, 0);
+    const c_minus_min = toNumber(req.body.c_minus_min, 0);
+    const d_plus_min = toNumber(req.body.d_plus_min, 0);
     const d_min = toNumber(req.body.d_min, 0);
+    const d_minus_min = toNumber(req.body.d_minus_min, 0);
     const e_min = toNumber(req.body.e_min ?? 0, 0);
     const average_multiplier = toNumber(req.body.average_multiplier ?? 1, 1);
 
-    if (!(a_min > b_min && b_min > c_min && c_min > d_min && d_min > e_min && e_min >= 0 && a_min <= 100)) {
-      return res.status(400).json({ error: "Invalid grade ranges. Must be A > B > C > D > E." });
+    const thresholds = [
+      a_min,
+      a_minus_min,
+      b_plus_min,
+      b_min,
+      b_minus_min,
+      c_plus_min,
+      c_min,
+      c_minus_min,
+      d_plus_min,
+      d_min,
+      d_minus_min,
+      e_min,
+    ];
+    const isStrictDescending = thresholds.every((value, index) => index === thresholds.length - 1 || value > thresholds[index + 1]);
+    if (!(isStrictDescending && e_min >= 0 && a_min <= 100)) {
+      return res.status(400).json({ error: "Invalid grade ranges. Each grade must be lower than the one above it." });
     }
     if (average_multiplier !== 1 && average_multiplier !== 2) {
       return res.status(400).json({ error: "Average multiplier must be 1 or 2." });
@@ -596,25 +664,48 @@ app.put(
 
     await pool.query(
       `
-      insert into grade_settings (teacher_id, a_min, b_min, c_min, d_min, e_min, average_multiplier, updated_at)
-      values ($1, $2, $3, $4, $5, $6, $7, now())
+      insert into grade_settings (
+        teacher_id, a_min, a_minus_min, b_plus_min, b_min, b_minus_min,
+        c_plus_min, c_min, c_minus_min, d_plus_min, d_min, d_minus_min,
+        e_min, average_multiplier, updated_at
+      )
+      values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, now())
       on conflict (teacher_id)
       do update set
         a_min = excluded.a_min,
+        a_minus_min = excluded.a_minus_min,
+        b_plus_min = excluded.b_plus_min,
         b_min = excluded.b_min,
+        b_minus_min = excluded.b_minus_min,
+        c_plus_min = excluded.c_plus_min,
         c_min = excluded.c_min,
+        c_minus_min = excluded.c_minus_min,
+        d_plus_min = excluded.d_plus_min,
         d_min = excluded.d_min,
+        d_minus_min = excluded.d_minus_min,
         e_min = excluded.e_min,
         average_multiplier = excluded.average_multiplier,
         updated_at = now()
       `,
-      [req.user.id, a_min, b_min, c_min, d_min, e_min, average_multiplier],
+      [
+        req.user.id,
+        a_min,
+        a_minus_min,
+        b_plus_min,
+        b_min,
+        b_minus_min,
+        c_plus_min,
+        c_min,
+        c_minus_min,
+        d_plus_min,
+        d_min,
+        d_minus_min,
+        e_min,
+        average_multiplier,
+      ],
     );
 
-    const saved = await pool.query(
-      "select a_min::float as a_min, b_min::float as b_min, c_min::float as c_min, d_min::float as d_min, e_min::float as e_min, average_multiplier::float as average_multiplier from grade_settings where teacher_id = $1",
-      [req.user.id],
-    );
+    const saved = await pool.query(GRADE_SETTINGS_SELECT, [req.user.id]);
     res.json(saved.rows[0]);
   }),
 );
@@ -1098,10 +1189,7 @@ app.get(
   asyncHandler(async (req, res) => {
     const classId = req.params.classId;
 
-    const scaleRows = await pool.query(
-      "select a_min::float as a_min, b_min::float as b_min, c_min::float as c_min, d_min::float as d_min, e_min::float as e_min, average_multiplier::float as average_multiplier from grade_settings where teacher_id = $1",
-      [req.user.id],
-    );
+    const scaleRows = await pool.query(GRADE_SETTINGS_SELECT, [req.user.id]);
     const scale = scaleRows.rows[0] || DEFAULT_GRADE_SCALE;
 
     const marksRows = await pool.query(
@@ -1149,7 +1237,7 @@ app.get(
     const classAverage =
       studentAverages.length === 0 ? 0 : studentAverages.reduce((a, b) => a + b, 0) / studentAverages.length;
 
-    const gradeBreakdown = { A: 0, B: 0, C: 0, D: 0, E: 0 };
+    const gradeBreakdown = emptyGradeBreakdown();
     for (const avg of studentAverages) gradeBreakdown[gradeFromScale(avg, scale)] += 1;
 
     const attendance = attendanceRows.rows[0] || { total_records: 0, present_records: 0 };

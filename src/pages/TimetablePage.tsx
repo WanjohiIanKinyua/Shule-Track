@@ -77,6 +77,7 @@ export default function TimetablePage() {
   const [subject_id, setSubjectId] = useState("");
   const [start_time, setStartTime] = useState("08:00");
   const [end_time, setEndTime] = useState("08:40");
+  const [addingLesson, setAddingLesson] = useState(false);
   const [importing, setImporting] = useState(false);
   const [importStatus, setImportStatus] = useState("");
   const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -143,6 +144,12 @@ export default function TimetablePage() {
       return;
     }
     if (!classId || !subject_id) return;
+    if (addingLesson) return;
+    if (start_time >= end_time) {
+      openNotice("End time must be later than start time.");
+      return;
+    }
+    setAddingLesson(true);
     try {
       await api(`/classes/${classId}/timetable`, {
         method: "POST",
@@ -151,8 +158,11 @@ export default function TimetablePage() {
       await loadClassData(classId);
       setPageMessage("Lesson added. Keep adding lessons for Monday to Friday to build the whole week.");
       setImportStatus("");
+      openNotice("Lesson added successfully.");
     } catch (e: any) {
       openNotice(e.message || "Could not add lesson.");
+    } finally {
+      setAddingLesson(false);
     }
   }
 
@@ -592,8 +602,8 @@ export default function TimetablePage() {
           </select>
           <input type="time" value={start_time} onChange={(e) => setStartTime(e.target.value)} required />
           <input type="time" value={end_time} onChange={(e) => setEndTime(e.target.value)} required />
-          <button className="btn" type="submit" disabled={!classId || !subject_id}>
-            Add
+          <button className="btn" type="submit" disabled={!classId || !subject_id || addingLesson}>
+            {addingLesson ? "Adding..." : "Add"}
           </button>
           <input ref={fileInputRef} type="file" accept=".xlsx,.xls,.csv" onChange={onImportChange} style={{ display: "none" }} />
           <button

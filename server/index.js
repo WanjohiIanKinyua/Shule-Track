@@ -116,6 +116,10 @@ async function ensureSchema() {
   await pool.query("alter table if exists grade_settings add column if not exists d_minus_min numeric(5,2) not null default 30");
   await pool.query("alter table if exists timetable_lessons drop constraint if exists timetable_lessons_day_of_week_check");
   await pool.query(`
+    create unique index if not exists timetable_lessons_unique_slot_idx
+    on timetable_lessons (class_id, day_of_week, start_time, end_time)
+  `);
+  await pool.query(`
     alter table timetable_lessons
     add constraint timetable_lessons_day_of_week_check
     check (day_of_week in ('Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'))
@@ -833,7 +837,13 @@ app.post(
     const row = await pool.query(
       "insert into timetable_lessons (class_id, subject_id, day_of_week, start_time, end_time) values ($1, $2, $3, $4::time, $5::time) returning *",
       [req.params.classId, subject_id || null, day_of_week, start_time, end_time],
-    );
+    ).catch((error) => {
+      if (error?.code === "23505") {
+        error.statusCode = 409;
+        error.exposedMessage = "This class already has a lesson in that exact time slot.";
+      }
+      throw error;
+    });
     res.json(row.rows[0]);
   }),
 );
@@ -1262,6 +1272,9 @@ app.get(
 app.use((err, _req, res, _next) => {
   console.error(err);
   if (res.headersSent) return;
+  if (err?.statusCode && err?.exposedMessage) {
+    return res.status(err.statusCode).json({ error: err.exposedMessage });
+  }
   res.status(500).json({ error: "Server error" });
 });
 

@@ -13,6 +13,7 @@ export default function AuthPage() {
   const [resetExpiresAt, setResetExpiresAt] = useState("");
   const [forgotSuccess, setForgotSuccess] = useState("");
   const [resetSuccess, setResetSuccess] = useState("");
+  const [copyMessage, setCopyMessage] = useState("");
   const [showLoginPassword, setShowLoginPassword] = useState(false);
   const [showRegisterPassword, setShowRegisterPassword] = useState(false);
   const [showRegisterConfirmPassword, setShowRegisterConfirmPassword] = useState(false);
@@ -25,12 +26,35 @@ export default function AuthPage() {
     return value.length >= 6 && /[A-Za-z]/.test(value) && /\d/.test(value) && /[^A-Za-z0-9]/.test(value);
   }
 
+  async function copyResetCode() {
+    if (!resetToken) return;
+    try {
+      if (navigator?.clipboard?.writeText) {
+        await navigator.clipboard.writeText(resetToken);
+      } else {
+        const textArea = document.createElement("textarea");
+        textArea.value = resetToken;
+        textArea.style.position = "fixed";
+        textArea.style.opacity = "0";
+        document.body.appendChild(textArea);
+        textArea.focus();
+        textArea.select();
+        document.execCommand("copy");
+        document.body.removeChild(textArea);
+      }
+      setCopyMessage("Reset code copied.");
+    } catch {
+      setCopyMessage("Could not copy. Please copy manually.");
+    }
+  }
+
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     setSubmitting(true);
     setError("");
     setForgotSuccess("");
     setResetSuccess("");
+    setCopyMessage("");
     try {
       if (mode === "login") {
         await login(email, password);
@@ -254,8 +278,14 @@ export default function AuthPage() {
               <p className="auth-reset-success">{forgotSuccess}</p>
               {resetToken && (
                 <>
-                  <p className="auth-reset-token-label">Reset Code</p>
+                  <div className="auth-reset-token-head">
+                    <p className="auth-reset-token-label">Reset Code</p>
+                    <button type="button" className="btn btn-outline auth-copy-btn" onClick={copyResetCode}>
+                      Copy
+                    </button>
+                  </div>
                   <code className="auth-reset-token">{resetToken}</code>
+                  {copyMessage && <p className="auth-copy-message">{copyMessage}</p>}
                   {resetExpiresAt && (
                     <p className="muted auth-reset-expire">
                       Expires: {new Date(resetExpiresAt).toLocaleString()}

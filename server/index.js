@@ -1,6 +1,7 @@
 import "dotenv/config";
 import fs from "node:fs";
 import path from "node:path";
+import crypto from "node:crypto";
 import { fileURLToPath } from "node:url";
 import express from "express";
 import cors from "cors";
@@ -232,6 +233,73 @@ app.post(
 
     const token = jwt.sign({ id: teacher.id, email: teacher.email }, JWT_SECRET, { expiresIn: "7d" });
     res.json({ token, teacher: { id: teacher.id, name: teacher.name, email: teacher.email } });
+  }),
+);
+
+app.post(
+  "/api/auth/forgot-password",
+  asyncHandler(async (req, res) => {
+    const email = String(req.body.email || "").trim().toLowerCase();
+    if (!email) return res.status(400).json({ error: "Email is required" });
+
+    const genericMessage =
+      "If that email exists, a password reset code has been generated. Use it to reset your password.";
+
+    const found = await pool.query("select id from teachers where email = $1", [email]);
+    if (!found.rowCount) return res.json({ ok: true, message: genericMessage });
+
+    const teacherId = found.rows[0].id;
+    await pool.query(
+      "delete from password_reset_tokens where teacher_id = $1 and (used_at is not null or expires_at <= now())",
+      [teacherId],
+    );
+
+    const token = crypto.randomBytes(24).toString("hex");
+    const expiresAt = new Date(Date.now() + 30 * 60 * 1000);
+
+    await pool.query(
+      "insert into password_reset_tokens (teacher_id, token, expires_at) values ($1, $2, $3)",
+      [teacherId, token, expiresAt.toISOString()],
+    );
+
+    res.json({ ok: true, message: genericMessage, resetToken: token, expiresAt: expiresAt.toISOString() });
+  }),
+);
+
+app.post(
+  "/api/auth/reset-password",
+  asyncHandler(async (req, res) => {
+    const token = String(req.body.token || "").trim();
+    const password = String(req.body.password || "");
+
+    if (!token || !password) return res.status(400).json({ error: "Token and password are required" });
+    if (!isStrongPassword(password)) {
+      return res.status(400).json({
+        error: "Password must be at least 6 characters and include a letter, a number, and a special character.",
+      });
+    }
+
+    const tokenResult = await pool.query(
+      `
+      select id, teacher_id
+      from password_reset_tokens
+      where token = $1
+        and used_at is null
+        and expires_at > now()
+      limit 1
+      `,
+      [token],
+    );
+
+    const tokenRow = tokenResult.rows[0];
+    if (!tokenRow) return res.status(400).json({ error: "Invalid or expired reset code." });
+
+    const hash = await bcrypt.hash(password, 10);
+    await pool.query("update teachers set password_hash = $1 where id = $2", [hash, tokenRow.teacher_id]);
+    await pool.query("update password_reset_tokens set used_at = now() where id = $1", [tokenRow.id]);
+    await pool.query("delete from password_reset_tokens where teacher_id = $1 and used_at is null", [tokenRow.teacher_id]);
+
+    res.json({ ok: true, message: "Password reset successful. You can now log in." });
   }),
 );
 

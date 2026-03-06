@@ -922,9 +922,50 @@ td {
   font-size: 1.05rem;
 }
 
+.auth-switch-stack {
+  display: grid;
+  gap: 4px;
+}
+
 .auth-password-hint {
   margin: -4px 0 0;
   font-size: 0.92rem;
+}
+
+.auth-reset-result {
+  border: 1px solid #b8d8c8;
+  border-radius: 10px;
+  background: #f3fbf6;
+  padding: 10px 12px;
+}
+
+.auth-reset-success {
+  margin: 0;
+  color: #186046;
+  font-weight: 700;
+}
+
+.auth-reset-token-label {
+  margin: 8px 0 4px;
+  color: #2b4f7e;
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+
+.auth-reset-token {
+  display: block;
+  overflow-wrap: anywhere;
+  background: #e9f0fb;
+  border: 1px solid #c6d7ee;
+  border-radius: 8px;
+  padding: 8px 10px;
+  color: #143e73;
+  font-size: 0.92rem;
+}
+
+.auth-reset-expire {
+  margin: 6px 0 0;
+  font-size: 0.86rem;
 }
 
 .attendance-reason-text {

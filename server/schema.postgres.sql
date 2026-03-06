@@ -8,6 +8,18 @@ create table if not exists teachers (
   created_at timestamptz not null default now()
 );
 
+create table if not exists password_reset_tokens (
+  id uuid primary key default gen_random_uuid(),
+  teacher_id uuid not null references teachers(id) on delete cascade,
+  token text not null unique,
+  expires_at timestamptz not null,
+  used_at timestamptz,
+  created_at timestamptz not null default now()
+);
+
+create index if not exists password_reset_tokens_teacher_idx on password_reset_tokens (teacher_id);
+create index if not exists password_reset_tokens_expiry_idx on password_reset_tokens (expires_at);
+
 create table if not exists classes (
   id uuid primary key default gen_random_uuid(),
   teacher_id uuid not null references teachers(id) on delete cascade,
